@@ -1,0 +1,7 @@
+{
+  "appId": "sy.civildefense.med",
+  "appName": "MED الدفاع المدني",
+  "webDir": "public",
+  "android": { "allowMixedContent": true },
+  "plugins": { "Geolocation": { "androidBackgroundPermissionRationale": "يستخدم MED موقع الخلفية للوصول إليك في الحالات الحرجة" } }
+}

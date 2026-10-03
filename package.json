@@ -1,0 +1,16 @@
+{
+  "name": "med-syrian-civil-defense",
+  "version": "1.0.0",
+  "description": "تطبيق الدفاع المدني السوري MED — مواطن + مركزية + فرعية + مدير",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5",
+    "cors": "^2.8.5"
+  }
+}

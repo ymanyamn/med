@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>الدفاع المدني السوري - MED</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1B4332">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ===== Splash (dark official) ===== -->
+<div id="splash">
+  <div class="splash-card splash-dark">
+    <svg viewBox="0 0 100 70" class="eagle-svg big" aria-hidden="true">
+      <g fill="#fff"><path d="M50 18 L42 8 L48 14 L50 6 L52 14 L58 8 Z"/><path d="M50 20 C40 20 30 26 18 38 L26 38 L20 44 L30 42 L26 48 L38 44 C42 52 46 56 50 58 C54 56 58 52 62 44 L74 48 L70 42 L80 44 L74 38 L82 38 C70 26 60 20 50 20 Z"/><circle cx="35" cy="12" r="2.4"/><circle cx="50" cy="8" r="2.4"/><circle cx="65" cy="12" r="2.4"/></g>
+    </svg>
+    <h1>الدفاع المدني السوري <span class="med">MED</span></h1>
+    <p id="typewriter" class="type"></p>
+    <button id="enterBtn" class="btn sos" disabled>دخول ⬅</button>
+    <div class="devlink" id="devLink">معلومات المبرمج ⓘ</div>
+  </div>
+</div>
+
+<!-- ===== Terminal modal ===== -->
+<div id="termOverlay" class="hidden">
+  <div id="terminal" dir="ltr">
+    <div class="tbar"><span></span><span></span><span></span><button id="termClose">✕</button></div>
+    <pre id="termBody"></pre>
+  </div>
+</div>
+
+<header id="topbar">
+  <div class="brand">الدفاع المدني السوري <b>MED</b></div>
+  <nav>
+    <button data-tab="citizen" class="active">👤 المواطن</button>
+    <button data-tab="central">🏛 المركزية</button>
+    <button data-tab="center">🏥 المحطة</button>
+    <button data-tab="admin">⚙️ الإدارة</button>
+  </nav>
+  <div id="netDot" title="الحالة">●</div>
+</header>
+
+<main>
+<!-- ============ CITIZEN ============ -->
+<section id="tab-citizen" class="tab active">
+  <div class="card hero">
+    <h2>إبلاغ عن حالة طوارئ</h2>
+    <p class="hint">يتم التقاط موقعك الدقيق <b>بصمت في الخلفية</b> (ACCESS_BACKGROUND_LOCATION) دون نوافذ مزعجة — للحالات الحرجة.</p>
+    <div class="catgrid" id="catGrid">
+      <button class="cat active" data-t="حريق">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c4.4 0 7.5-3 7.5-7.2 0-3.6-2.4-6.2-4.3-8.3-.5 1.6-1.2 2.6-2.4 3.7C11.4 8.6 10.5 6 10.5 3.5 7.4 5.8 4.5 9.4 4.5 14.8 4.5 19 7.6 22 12 22z"/><path d="M12 22c-2.2 0-3.8-1.5-3.8-3.4 0-1.9 1.7-3.1 2.7-4.6.5 1 1 1.6 1.9 2.3-.3-1.9.1-4 1-5.7 1.9 1.7 3.9 3.9 3.9 7 0 2.4-2 4.4-5.7 4.4z"/></svg>
+        <span>حريق</span></button>
+      <button class="cat" data-t="طبي / إنقاذ">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l7.5 3v6c0 5-3.2 8.4-7.5 11-4.3-2.6-7.5-6-7.5-11V5z"/><path d="M12 8v6M9 11h6"/></svg>
+        <span>طبي / إنقاذ</span></button>
+      <button class="cat" data-t="انهيار مبنى">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V9l4-2.5V21M9 21V4.5L15 2v19M15 21v-8l6-2.5V21"/><path d="M9 9l1.5 2L9 13l1.5 2"/></svg>
+        <span>انهيار مبنى</span></button>
+      <button class="cat" data-t="كوارث طبيعية">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 13c2.5 0 2.5 2 5 2s2.5-2 5-2 2.5 2 5 2 2.5-2 5-2"/><path d="M2 18c2.5 0 2.5 2 5 2s2.5-2 5-2 2.5 2 5 2 2.5-2 5-2"/><path d="M12 3v6M10 5l2-2 2 2"/></svg>
+        <span>كوارث طبيعية</span></button>
+      <button class="cat" data-t="حادث عام">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3L2 20h20z"/><path d="M12 10v4.5M12 17.5v.5"/></svg>
+        <span>حادث عام</span></button>
+    </div>
+    <div class="grid2">
+      <label>رقم الهاتف* <input id="repPhone" inputmode="tel" placeholder="09xxxxxxxx"></label>
+      <label>الاسم (اختياري) <input id="repName" placeholder="اسم المُبلغ"></label>
+    </div>
+    <label>وصف الحالة* <textarea id="repDesc" rows="2" placeholder="اشرح باختصار..."></textarea></label>
+    <div class="grid2">
+      <label>عدد المصابين <input id="repCount" type="number" min="0" value="0"></label>
+      <label>عنوان مميز <input id="repAddr" placeholder="مدينة / حي / علامة"></label>
+    </div>
+    <div class="locrow"><span id="locStatus">📍 جارٍ جلب الموقع بالخلفية…</span>
+      <button id="pickBtn" class="btn ghost">📍 تثبيت يدوي</button></div>
+    <div id="citMap" class="map"></div>
+    <button id="sendRep" class="btn sos big">إرسال SOS بنقرة واحدة</button>
+    <div id="citTrack"></div>
+  </div>
+  <div class="card"><h3>📚 إرشادات الإسعاف الأولي</h3><p class="hint">حافظ على هدوئك • ابتعد عن الخطر • لا تحرك المصابين بشدة • اتصل وانتظر التوجيه.</p></div>
+</section>
+
+<!-- ============ CENTRAL ============ -->
+<section id="tab-central" class="tab">
+  <div id="centralLock" class="card">
+    <h2>🏛 غرفة العمليات المركزية</h2>
+    <p class="hint">دخول الموزّع بكلمة المرور (افتراضي <code>central123</code> — يغيّرها المدير).</p>
+    <div class="row"><input id="centralPass" type="password" placeholder="كلمة المرور"><button id="centralLogin" class="btn">دخول</button></div>
+  </div>
+  <div id="centralApp" class="hidden">
+    <div class="card alert" id="newAlert" style="display:none">
+      <div>🔔 <b>تنبيه وارد!</b> <span id="alertInfo"></span></div>
+      <div class="timer">⏳ <span id="countdown">30</span> ثانية</div>
+      <div class="row">
+        <button id="confirmBtn" class="btn">✅ تأكيد البلاغ</button>
+        <button id="smartBtn" class="btn smart">🤖 الإرسال الذكي AI</button>
+      </div>
+    </div>
+    <div class="card"><h2>📥 البلاغات الواردة <span id="repCount2" class="badge"></span></h2><div id="centralList"></div></div>
+    <div class="card hidden" id="assignCard">
+      <h3>📍 الموقع المباشر + أقرب المحطات</h3>
+      <div id="centMap" class="map tall"></div>
+      <div id="nearList"></div>
+      <div class="row"><button id="dispatchBtn" class="btn sos">📤 إرسال إلى المحطة</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ STATION ============ -->
+<section id="tab-center" class="tab">
+  <div id="centerLock" class="card">
+    <h2>🏥 غرفة عمليات المحطة</h2>
+    <div class="grid2">
+      <label>المحطة <select id="subSelect"></select></label>
+      <label>رمز المحطة <input id="subCode" type="password" placeholder="مثال 1001"></label>
+    </div>
+    <button id="subLogin" class="btn">دخول المحطة</button>
+  </div>
+  <div id="centerApp" class="hidden">
+    <div class="card"><h2 id="subTitle"></h2>
+      <div class="row"><span class="pill" id="pillSub">المهام المسندة</span><span class="pill gold" id="pillPend">📝 تقارير معلقة: 0</span></div>
+      <div id="subList"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ADMIN ============ -->
+<section id="tab-admin" class="tab">
+  <div class="card" id="adminStep1">
+    <h2>⚙️ لوحة التحكم الإدارية</h2>
+    <p class="hint">دخول مقيّد بالبريد <code>redmimhmdov@gmail.com</code> — بدون كلمة مرور: كود OTP مشفّر أو رابط سحري.</p>
+    <div class="row"><input id="adminEmail" dir="ltr" placeholder="redmimhmdov@gmail.com"><button id="adminSend" class="btn">إرسال الكود</button></div>
+    <div id="adminMsg"></div>
+  </div>
+  <div class="card hidden" id="adminStep2">
+    <h3>أدخل الكود (صالح 10 دقائق)</h3>
+    <div class="row"><input id="adminCode" dir="ltr" inputmode="numeric" placeholder="000000"><button id="adminVerify" class="btn">تحقق ودخول</button></div>
+    <div class="hint">الرابط المشفّر: <code id="adminLink"></code></div>
+  </div>
+  <div id="adminApp" class="hidden">
+    <div class="card"><h2>📊 نظرة عامة</h2>
+      <div class="stats"><div class="stat"><b id="stActive">0</b><span>نشطة</span></div>
+      <div class="stat"><b id="stArch">0</b><span>مؤرشفة</span></div>
+      <div class="stat"><b id="stMiss">0</b><span>تقارير مفقودة</span></div>
+      <div class="stat"><b id="stCent">0</b><span>محطات</span></div></div>
+      <div id="bars" class="bars"></div>
+      <div id="missBox"></div>
+    </div>
+    <div class="card"><h2>🗺️ محرر المحطات (سحب وإفلات)</h2>
+      <p class="hint">اسحب أي علامة ذهبية لتغيير إحداثيات المحطة ثم اضغط حفظ. زر ➕ لإضافة محطة جديدة.</p>
+      <div id="admMap" class="map tall"></div>
+      <div class="grid2">
+        <label>اسم محطة جديدة <input id="ncName" placeholder="مركز ..."></label>
+        <label>الرمز <input id="ncCode" placeholder="1006"></label>
+        <label>الهاتف <input id="ncPhone"></label>
+        <label class="chk"><input type="checkbox" id="ncPub" checked> نشر على الخريطة</label>
+      </div>
+      <div class="row"><button id="ncAdd" class="btn">➕ إضافة محطة</button>
+        <label style="flex:1">كلمة مرور المركزية <input id="setCentralPass"></label></div>
+      <div id="adminCenters"></div>
+    </div>
+    <div class="card"><h2>📋 كل الحوادث + سجل المواقع الخلفي</h2><div id="adminReports"></div></div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div>MED © الدفاع المدني السوري — يعمل أوفلاين + Realtime</div>
+  <div class="devlink" id="devLink2">معلومات المبرمج ⓘ</div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
