@@ -1,12 +1,14 @@
 {
-  "name": "MED",
+  "name": "الدفاع المدني السوري - MED",
   "short_name": "MED",
-  "description": "الدفاع المدني السوري — بلاغات طارئة",
+  "description": "منظومة الدفاع المدني السوري للبلاغات والاستجابة الطارئة",
   "start_url": ".",
+  "scope": ".",
   "display": "standalone",
+  "orientation": "portrait",
   "dir": "rtl",
   "lang": "ar",
-  "background_color": "#fdf8ec",
-  "theme_color": "#0b6b3a",
-  "icons": [{ "src": "icon.png", "sizes": "512x512", "type": "image/png" }]
+  "background_color": "#050d0a",
+  "theme_color": "#1B4332",
+  "icons": [{ "src": "icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }]
 }

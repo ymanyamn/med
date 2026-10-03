@@ -2,16 +2,29 @@
 *{box-sizing:border-box;font-family:"Cairo","Tajawal","Segoe UI",Tahoma,Arial,sans-serif}
 body{margin:0;background:var(--cream);color:var(--ink)}
 .hidden{display:none!important}
-/* splash — dark official (eagle + pattern like reference image) */
-#splash{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:20px;background-color:#08120d;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'%3E%3Cg fill='none' stroke='%231E5A3C' stroke-width='1.4' opacity='0.6'%3E%3Cpath d='M48 6 L57 39 L90 48 L57 57 L48 90 L39 57 L6 48 L39 39 Z'/%3E%3Ccircle cx='48' cy='48' r='13'/%3E%3Ccircle cx='0' cy='0' r='13'/%3E%3Ccircle cx='96' cy='0' r='13'/%3E%3Ccircle cx='0' cy='96' r='13'/%3E%3Ccircle cx='96' cy='96' r='13'/%3E%3C/g%3E%3C/svg%3E")}
-.splash-dark{background:transparent;border:0;box-shadow:none;max-width:480px;width:100%;text-align:center;padding:34px 28px}
+/* splash — dark official matching reference image */
+#splash{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:20px;background:#050d0a;overflow:hidden}
+.splash-pattern{position:absolute;inset:0;opacity:.55;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%23164a30' stroke-width='1.3'%3E%3Cpath d='M60 8 L68 52 L112 60 L68 68 L60 112 L52 68 L8 60 L52 52 Z'/%3E%3Crect x='38' y='38' width='44' height='44' transform='rotate(45 60 60)'/%3E%3Ccircle cx='60' cy='60' r='10'/%3E%3Ccircle cx='0' cy='0' r='22'/%3E%3Ccircle cx='120' cy='0' r='22'/%3E%3Ccircle cx='0' cy='120' r='22'/%3E%3Ccircle cx='120' cy='120' r='22'/%3E%3C/g%3E%3C/svg%3E")}
+.splash-vignette{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 38%,transparent 30%,rgba(0,0,0,.55) 78%,rgba(0,0,0,.85) 100%)}
+.splash-dark{position:relative;background:transparent;border:0;box-shadow:none;max-width:480px;width:100%;text-align:center;padding:20px 28px;animation:splashIn 1.1s ease both}
+@keyframes splashIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.eagle-wrap{animation:eagleFloat 5s ease-in-out infinite}
+@keyframes eagleFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
 .eagle-svg{width:120px;height:84px}
-.eagle-svg.big{width:168px;height:118px;filter:drop-shadow(0 6px 22px rgba(0,0,0,.7))}
-.splash-dark h1{color:#F4F1EA}
-.splash-dark h1 .med{background:transparent;color:var(--gold);border:2px solid var(--gold)}
-.splash-dark .type{color:#E9CE7A}
-.splash-dark #enterBtn{background:var(--gold);color:#1B4332}
-.splash-dark .devlink{color:#9AA79F}
+.eagle-svg.big{width:min(220px,58vw);height:auto;filter:drop-shadow(0 8px 26px rgba(0,0,0,.75)) drop-shadow(0 0 22px rgba(255,255,255,.08))}
+/* wing flap animation */
+#wingL{transform-origin:96px 64px;transform-box:fill-box;animation:flapL 3.4s ease-in-out infinite}
+#wingR{transform-origin:104px 64px;transform-box:fill-box;animation:flapR 3.4s ease-in-out infinite}
+@keyframes flapL{0%,100%{transform:rotate(0deg)}50%{transform:rotate(-7deg) translateY(-2px)}}
+@keyframes flapR{0%,100%{transform:rotate(0deg)}50%{transform:rotate(7deg) translateY(-2px)}}
+#eagleStars{animation:starTwinkle 2.8s ease-in-out infinite}
+@keyframes starTwinkle{0%,100%{opacity:1}50%{opacity:.55}}
+@media (prefers-reduced-motion:reduce){.eagle-wrap,#wingL,#wingR,#eagleStars{animation:none}}
+.splash-dark h1{color:#F4F1EA;font-size:30px;margin:14px 0 6px}
+.splash-dark h1 .med{background:transparent;color:var(--gold);border:2px solid var(--gold);font-size:.65em;padding:3px 12px}
+.splash-dark .type{color:#E9CE7A;min-height:56px;font-size:22px}
+.splash-dark .btn.gold{background:var(--gold);color:#12241a;width:100%;margin-top:14px;font-size:19px}
+.splash-dark .devlink{color:#9fb0a6;margin-top:18px}
 .btn{background:var(--green);color:#fff;border:0;border-radius:12px;padding:12px 22px;font-size:17px;font-weight:700;cursor:pointer}
 .btn.sos{background:var(--red);box-shadow:0 6px 18px rgba(193,39,45,.4)}
 .btn.big{width:100%;margin-top:12px;font-size:19px}
@@ -57,13 +70,18 @@ input,select,textarea{width:100%;padding:11px;border:1.5px solid #cbbb93;border-
 .chk{display:flex;gap:6px;align-items:center}.chk input{width:auto}
 code{background:#eee;padding:2px 6px;border-radius:6px}
 footer{text-align:center;color:#8a7f63;padding:20px;background:var(--green);color:#F4F1EA}
-/* citizen categories — serious official cards, no playful emoji */
-.catgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:12px 0}
-.cat{background:#fff;border:2px solid #cfc39f;border-radius:14px;padding:14px 6px;cursor:pointer;display:flex;flex-direction:column;gap:8px;align-items:center;color:var(--green);font-family:inherit}
-.cat svg{width:38px;height:38px}
-.cat span{font-size:14px;font-weight:800;color:var(--green)}
-.cat.active{border-color:var(--red);background:#fef4f4;box-shadow:0 0 0 3px rgba(193,39,45,.18)}
-.cat.active svg,.cat.active span{color:var(--red)}
+/* citizen categories — official Fluent-style: solid badge + white glyph, sharp & legible */
+.fieldset-title{font-weight:800;color:var(--green);margin:14px 0 2px;font-size:16px}
+.catgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:10px 0}
+@media(max-width:720px){.catgrid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:420px){.catgrid{grid-template-columns:repeat(2,1fr)}}
+.cat{background:#fff;border:2px solid #d9cfae;border-radius:16px;padding:14px 6px 12px;cursor:pointer;display:flex;flex-direction:column;gap:10px;align-items:center;color:var(--green);font-family:inherit;min-height:132px;justify-content:center}
+.cat .ico{width:58px;height:58px;border-radius:16px;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 -3px 0 rgba(0,0,0,.18)}
+.cat .ico svg{width:32px;height:32px;display:block}
+.cat span:last-child{font-size:13.5px;font-weight:800;color:var(--green);line-height:1.4;text-align:center}
+.cat.active{border-color:var(--red);background:#fef5f5;box-shadow:0 0 0 3px rgba(193,39,45,.18)}
+.cat.active .ico{background:var(--red)}
+.cat.active span:last-child{color:var(--red)}
 /* pulsing red dot */
 .pulse{width:18px;height:18px;background:var(--red);border-radius:50%;box-shadow:0 0 0 6px rgba(193,39,45,.3);animation:pl 1.2s infinite}
 @keyframes pl{50%{box-shadow:0 0 0 14px rgba(193,39,45,.1)}}

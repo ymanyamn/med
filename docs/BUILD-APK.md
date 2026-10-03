@@ -24,10 +24,13 @@ Actions → Build MED APK → download **MED-debug-apk**.
 Signed release: add your keystore as CI secrets then `./gradlew assembleRelease`.
 
 ## Firebase path (optional, per spec)
-Auth (email-link for redmimhmdov@gmail.com) + Firestore `incidents` realtime +
+Auth (email-link for the admin inbox) + Firestore `incidents` realtime +
 FCM chime/push. Drop `google-services.json` into `android/app/` and mirror the
 `report`/`report-update` socket events to Firestore — no UI changes needed.
 
-## Logins
-- Central: `central123` (admin can change) • Stations: codes 1001..1005
-- Admin: email `redmimhmdov@gmail.com` → OTP (10 min) + encrypted `#/admin-MED-…` link
+## Logins (credentials are private — never published here)
+- Central: room password set by admin (`POST /api/admin/central-password`).
+  Initial password is printed once in the server console on first boot — change it immediately.
+- Stations: per-station secret code set/rotated by admin from the dashboard.
+- Admin: configured inbox (`MED_ADMIN_EMAIL`) → OTP (10 min) + single-use magic link.
+  Without SMTP the code is printed to the server console (test mode only).
