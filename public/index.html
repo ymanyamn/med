@@ -59,20 +59,11 @@
 
 <header id="topbar">
   <div class="brand">الدفاع المدني السوري <b>MED</b></div>
-<<<<<<< HEAD
-  <nav>
-    <button data-tab="home" class="active">الرئيسية</button>
-    <button data-tab="citizen">المواطن</button>
-    <button data-tab="central">المركزية</button>
-    <button data-tab="center">المحطة</button>
-    <button data-tab="admin">الإدارة</button>
-=======
   <nav id="mainNav">
     <button data-tab="citizen" class="active">المواطن</button>
     <button data-tab="central" data-staff="central" class="hidden">المركزية</button>
     <button data-tab="center" data-staff="station" class="hidden">المحطة</button>
     <button data-tab="admin" data-staff="admin" class="hidden">الإدارة</button>
->>>>>>> ca13b39 (MED smart ops: AI gate, breathing map, analysis terminal, team tracking, rotating links)
   </nav>
   <div id="netDot" title="الحالة">●</div>
 </header>
@@ -89,10 +80,6 @@
   </div>
 </section>
 <!-- ============ CITIZEN ============ -->
-<<<<<<< HEAD
-<section id="tab-citizen" class="tab">
-  <div class="card hero">
-=======
 <section id="tab-citizen" class="tab active">
   <!-- البطاقة الذكية: أول ما يراه الزائر -->
   <div class="card ai-gate" id="gateCard">
@@ -110,7 +97,6 @@
     </div>
   </div>
   <div class="card hero" id="repFormCard">
->>>>>>> ca13b39 (MED smart ops: AI gate, breathing map, analysis terminal, team tracking, rotating links)
     <h2>إبلاغ عن حالة طوارئ</h2>
     <p class="hint">يتم التقاط موقعك الدقيق <b>بصمت في الخلفية</b> دون نوافذ مزعجة — للحالات الحرجة.</p>
     <div id="nearHint" class="hint hidden"></div>
@@ -174,15 +160,6 @@
     <div class="row"><input id="centralPass" type="password" placeholder="كلمة المرور"><button id="centralLogin" class="btn">دخول</button></div>
   </div>
   <div id="centralApp" class="hidden">
-<<<<<<< HEAD
-    <div id="centralPopup" class="cpopup hidden">
-      <div class="cpopup-card">
-        <h3>بلاغ وارد جديد <span id="cpInfo"></span></h3>
-        <div class="timer"><span id="cpCount">30</span> ثانية</div>
-        <div class="row">
-          <button id="cpConfirm" class="btn">تأكيد البلاغ</button>
-          <button id="cpSmart" class="btn smart">الإرسال الذكي AI</button>
-=======
     <!-- بطاقة إشعار منبثقة + صوت + عداد -->
     <div id="popOverlay" class="hidden">
       <div class="pop-card">
@@ -192,7 +169,6 @@
         <div class="row">
           <button id="popConfirm" class="btn">تأكيد</button>
           <button id="popSmart" class="btn smart">النظام الذكي</button>
->>>>>>> ca13b39 (MED smart ops: AI gate, breathing map, analysis terminal, team tracking, rotating links)
         </div>
       </div>
     </div>
@@ -208,14 +184,6 @@
       <h3>الموقع المباشر + أقرب المحطات</h3>
       <div id="missionTimer" class="hint hidden"></div>
       <div id="centMap" class="map tall"></div>
-<<<<<<< HEAD
-      <div class="row"><button id="analyzeBtn" class="btn">تحليل البلاغ</button><span id="missionTimer" class="pill"></span></div>
-      <div id="analysisTerm" class="aterm hidden"><pre id="analysisBody"></pre></div>
-      <div id="nearList"></div>
-      <div class="row"><button id="dispatchBtn" class="btn sos">إرسال إلى المحطة</button></div>
-    </div>
-    <div class="card"><h3>تتبع الفرق الميدانية</h3><div id="teamTrack"></div></div>
-=======
       <div id="repPhotoView" class="hidden"><img id="repPhotoImg" alt="صورة المبلغ"><span>صورة لحظية من هاتف المبلغ</span></div>
       <div class="row">
         <button id="analyzeBtn" class="btn">تحليل</button>
@@ -244,7 +212,6 @@
       <div id="trackOut"></div>
       <div id="teamList"></div>
     </div>
->>>>>>> ca13b39 (MED smart ops: AI gate, breathing map, analysis terminal, team tracking, rotating links)
   </div>
 </section>
 
@@ -298,13 +265,8 @@
 <section id="tab-admin" class="tab">
   <div class="card" id="adminStep1">
     <h2>لوحة التحكم الإدارية</h2>
-<<<<<<< HEAD
-    <p class="hint">منطقة مقيدة — للمدير العام فقط. أدخل بريد الإدارة ليصلك <b>رابط مشفر لمرة واحدة</b>، ثم أدخل كلمة مرور اللوحة.</p>
-    <div class="row"><input id="adminEmail" dir="ltr" placeholder="البريد الإلكتروني للإدارة" autocomplete="off"><button id="adminSend" class="btn">إرسال الرابط المشفر</button></div>
-=======
     <p class="hint">منطقة مقيدة — للمدير العام فقط. أدخل بريد الإدارة وستصلك رسالة دخول.</p>
     <div class="row"><input id="adminEmail" dir="ltr" placeholder="البريد الإلكتروني للإدارة" autocomplete="off"><button id="adminLinkBtn" class="btn">إرسال رابط الدخول</button></div>
->>>>>>> ca13b39 (MED smart ops: AI gate, breathing map, analysis terminal, team tracking, rotating links)
     <div id="adminMsg"></div>
   </div>
   <div class="card hidden" id="adminPassCard">
@@ -318,39 +280,7 @@
     <div class="row"><input id="adminLinkIn" dir="ltr" placeholder="#/a-..."><input id="adminPass" type="password" placeholder="كلمة مرور اللوحة"><button id="adminVerify" class="btn">دخول اللوحة</button></div>
   </div>
   <div id="adminApp" class="hidden">
-<<<<<<< HEAD
-    <div class="card"><h2>أقسام اللوحة حسب مراحل العمل</h2>
-      <div class="row" id="adminSecs">
-        <button class="btn ghost" data-s="sGate">1 الدخول والبوابة</button>
-        <button class="btn ghost" data-s="sRep">2 البلاغات</button>
-        <button class="btn ghost" data-s="sOps">3 المركزية</button>
-        <button class="btn ghost" data-s="sTeam">4 المحطات والفرق</button>
-        <button class="btn ghost" data-s="sTrack">5 التتبع</button>
-        <button class="btn ghost" data-s="sDir">6 سجل الفريق العام</button>
-      </div>
-    </div>
-    <div class="card" id="sec-sGate"><h3>1 الدخول والبوابة</h3><div id="admGate"></div></div>
-    <div class="card" id="sec-sRep"><h3>2 البلاغات</h3><div id="admReps"></div></div>
-    <div class="card" id="sec-sOps"><h3>3 المركزية</h3><div id="admOps"></div></div>
-    <div class="card" id="sec-sTeam"><h3>4 المحطات والفرق</h3>
-      <div class="grid2">
-        <label>اسم محطة جديدة <input id="ncName" placeholder="مركز ..."></label>
-        <label>الرمز <input id="ncCode" placeholder="1006"></label>
-        <label>الهاتف <input id="ncPhone"></label>
-        <label>اسم مدير المركز <input id="ncMgr" placeholder="اسم المدير"></label>
-        <label>رقم مدير المركز <input id="ncMgrPhone" placeholder="09xxxxxxxx"></label>
-        <label class="chk"><input type="checkbox" id="ncPub" checked> نشر على الخريطة</label>
-      </div>
-      <div class="row"><button id="ncAdd" class="btn">إضافة محطة</button></div>
-      <div class="row"><label style="flex:1">كلمة مرور جديدة للغرفة المركزية <input id="setCentralPass" type="password" autocomplete="off"></label><button id="setCentralBtn" class="btn">تغيير الكلمة</button></div>
-      <div id="adminCenters"></div>
-    </div>
-    <div class="card" id="sec-sTrack"><h3>5 التتبع المباشر</h3><div id="admMap" class="map tall"></div><div id="admTrack"></div></div>
-    <div class="card" id="sec-sDir"><h3>6 سجل الفريق العام (مدراء المراكز)</h3><div id="admDir"></div></div>
-    <div class="card"><h2>نظرة عامة</h2>
-=======
     <div class="card"><h2>المرحلة 1 — نظرة عامة</h2>
->>>>>>> ca13b39 (MED smart ops: AI gate, breathing map, analysis terminal, team tracking, rotating links)
       <div class="stats"><div class="stat"><b id="stActive">0</b><span>نشطة</span></div>
       <div class="stat"><b id="stArch">0</b><span>مؤرشفة</span></div>
       <div class="stat"><b id="stMiss">0</b><span>تقارير مفقودة</span></div>
@@ -360,10 +290,6 @@
     </div>
     <div class="card"><h2>المرحلة 2 — محرر المحطات (سحب وإفلات)</h2>
       <p class="hint">اسحب أي علامة لتغيير إحداثيات المحطة ثم اضغط حفظ. زر إضافة محطة جديدة بالأسفل.</p>
-<<<<<<< HEAD
-      <div class="row"><button id="logoutAdmin" class="btn ghost">إنهاء الجلسة وتجديد الروابط</button></div>
-      <div id="admMapNote"></div>
-=======
       <div id="admMap" class="map tall"></div>
       <div class="grid2">
         <label>اسم محطة جديدة <input id="ncName" placeholder="مركز ..."></label>
@@ -376,7 +302,6 @@
       <div class="row"><button id="ncAdd" class="btn">إضافة محطة</button></div>
       <div class="row"><label style="flex:1">كلمة مرور جديدة للغرفة المركزية <input id="setCentralPass" type="password" autocomplete="off"></label><button id="setCentralBtn" class="btn">تغيير الكلمة</button></div>
       <div id="adminCenters"></div>
->>>>>>> ca13b39 (MED smart ops: AI gate, breathing map, analysis terminal, team tracking, rotating links)
     </div>
     <div class="card"><h2>المرحلة 3 — روابط الدخول المشفرة المتجددة</h2>
       <p class="hint">ولّد رابطاً مشفراً لكل غرفة. أحادي الاستخدام — ينتهي بعد الجلسة. لا يظهر في مصدر الصفحة.</p>

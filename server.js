@@ -23,8 +23,6 @@ const DB_FILE = path.join(__dirname, 'med-db.json');
 // Admin inbox: ONLY this address can receive login links. Configurable via env.
 const ADMIN_EMAIL = (process.env.MED_ADMIN_EMAIL || 'redmimhmdov@gmail.com').toLowerCase();
 // Admin second factor password ("1992" per spec). ONLY its hash lives here.
-const ADMIN_PASS_HASH = crypto.createHash('sha256').update(String(process.env.MED_ADMIN_PASS || '1992')).digest('hex');
-
 const sha256 = (s) => crypto.createHash('sha256').update(String(s)).digest('hex');
 // Admin gate password (second factor after the encrypted link). Never sent to clients.
 const ADMIN_PASS_HASH = sha256(process.env.MED_ADMIN_PASS || '1992');
@@ -42,13 +40,8 @@ const trackLinks = {};
 const teamPos = {};
 
 function seedCenters() {
-<<<<<<< HEAD
-  const mk = (id, name, code, phone, lat, lng, published) =>
-    ({ id, name, codeHash: sha256(code), phone, lat, lng, published, managerName: '', managerPhone: '', trackHash: null });
-=======
   const mk = (id, name, code, phone, manager, managerPhone, lat, lng, published) =>
     ({ id, name, codeHash: sha256(code), phone, manager, managerPhone, lat, lng, published });
->>>>>>> ca13b39 (MED smart ops: AI gate, breathing map, analysis terminal, team tracking, rotating links)
   return [
     mk('c1', 'مركز إدلب المركزي', '1001', '0950000001', 'مدير مركز إدلب', '0950000001', 35.9306, 36.6339, true),
     mk('c2', 'مركز حلب — الأتارب', '1002', '0950000002', 'مدير مركز الأتارب', '0950000002', 36.1372, 36.9733, true),
@@ -111,13 +104,8 @@ const need = (...roles) => (req, res, next) => {
 
 // Public view of a center: NEVER code/codeHash. No phones publicly.
 const pubCenter = (c) => ({ id: c.id, name: c.name, lat: c.lat, lng: c.lng, published: c.published });
-<<<<<<< HEAD
-const staffCenter = (c) => ({ ...pubCenter(c), phone: c.phone, managerName: c.managerName || '', managerPhone: c.managerPhone || '' });
-const adminCenter = (c) => ({ ...staffCenter(c), hasCode: !!c.codeHash, hasTrack: !!c.trackHash });
-=======
 const staffCenter = (c) => ({ ...pubCenter(c), phone: c.phone, manager: c.manager, managerPhone: c.managerPhone });
 const adminCenter = (c) => ({ ...staffCenter(c), hasCode: !!c.codeHash });
->>>>>>> ca13b39 (MED smart ops: AI gate, breathing map, analysis terminal, team tracking, rotating links)
 
 // ---- PUBLIC ----
 app.get('/api/centers', (req, res) => res.json(db.centers.filter(c => c.published).map(pubCenter)));
@@ -239,9 +227,6 @@ app.post('/api/session/end', (req, res) => {
   res.json({ ok: true });
 });
 
-<<<<<<< HEAD
-// ---- ADMIN: encrypted single-use link (emailed) + gate password ----
-=======
 // ---- OPAQUE ROTATING ENTRY LINKS (#/go/<id>) ----
 // Only admins can mint staff entry links. Links are single-use, 15-min, and reveal
 // nothing in page source (no role/password inside). After a session ends, mint a new one.
@@ -303,30 +288,11 @@ app.get('/api/track', need('central', 'admin', 'station'), (req, res) => {
 
 // ---- ADMIN (magic link to inbox + password 1992) ----
 // Step 1: request link. Generic reply; real link only logged/emailed for the inbox.
->>>>>>> ca13b39 (MED smart ops: AI gate, breathing map, analysis terminal, team tracking, rotating links)
 app.post('/api/admin/request-link', (req, res) => {
   const { email } = req.body || {};
   if ((email || '').trim().toLowerCase() !== ADMIN_EMAIL) {
     return res.json({ ok: true, message: 'إن كان البريد مسجلاً ستصلك رسالة دخول' });
   }
-<<<<<<< HEAD
-  const token = 'A-' + crypto.randomBytes(24).toString('hex');
-  db.adminLinks[token] = { exp: Date.now() + 30 * 60 * 1000 };
-  // PRODUCTION: email `#/a-<token>` to ADMIN_EMAIL via SMTP here.
-  // TEST MODE: server console only — NEVER returned to the browser.
-  console.log(`[MED] admin magic link: #/a-${token} (valid 30 min, single-use, rotated after session)`);
-  res.json({ ok: true, message: 'تم إرسال الرابط المشفر إلى بريد المدير (صالح 30 دقيقة، لمرة واحدة)' });
-});
-app.post('/api/admin/enter', (req, res) => {
-  const { token, password } = req.body || {};
-  const tk = String(token || '').replace(/^#\/a-/, '').replace(/^a-/, 'A-');
-  const norm = tk.startsWith('A-') ? tk : null;
-  const rec = norm && db.adminLinks[norm];
-  if (!rec) return res.status(401).json({ error: 'رابط غير صالح — اطلب رابطاً جديداً' });
-  if (Date.now() > rec.exp) { delete db.adminLinks[norm]; return res.status(400).json({ error: 'انتهت صلاحية الرابط' }); }
-  if (!password || sha256(String(password)) !== ADMIN_PASS_HASH) return res.status(401).json({ error: 'كلمة المرور غير صحيحة' });
-  delete db.adminLinks[norm]; // single-use: link dies when the session starts
-=======
   const id = randId('A');
   entryLinks[id] = { role: 'admin-link', exp: Date.now() + 15 * 60 * 1000, used: false };
   // PRODUCTION: email `#/go/${id}` to ADMIN_EMAIL via SMTP here.
@@ -344,16 +310,12 @@ app.post('/api/admin/unlock', (req, res) => {
     return res.status(401).json({ error: 'كلمة المرور غير صحيحة' });
   }
   L.used = true;
->>>>>>> ca13b39 (MED smart ops: AI gate, breathing map, analysis terminal, team tracking, rotating links)
   db.adminToken = randTok('adm-');
   db.otps = {};
   saveDB(db);
   res.json({ ok: true, adminToken: db.adminToken });
 });
-<<<<<<< HEAD
-=======
 // Legacy OTP endpoints kept as aliases (same inbox-only behavior: no code in reply).
->>>>>>> ca13b39 (MED smart ops: AI gate, breathing map, analysis terminal, team tracking, rotating links)
 app.post('/api/admin/request-code', (req, res) => {
   const { email } = req.body || {};
   if ((email || '').trim().toLowerCase() !== ADMIN_EMAIL) {
@@ -390,19 +352,11 @@ app.post('/api/admin/centers', need('admin'), (req, res) => {
 app.put('/api/admin/centers/:id', need('admin'), (req, res) => {
   const c = db.centers.find(x => x.id === req.params.id);
   if (!c) return res.status(404).json({ error: 'not found' });
-<<<<<<< HEAD
-  const { name, code, phone, lat, lng, published, managerName, managerPhone } = req.body || {};
-  if (name !== undefined) c.name = name;
-  if (phone !== undefined) c.phone = phone;
-  if (managerName !== undefined) c.managerName = String(managerName);
-  if (managerPhone !== undefined) c.managerPhone = String(managerPhone);
-=======
   const { name, code, phone, manager, managerPhone, lat, lng, published } = req.body || {};
   if (name !== undefined) c.name = name;
   if (phone !== undefined) c.phone = phone;
   if (manager !== undefined) c.manager = manager;
   if (managerPhone !== undefined) c.managerPhone = managerPhone;
->>>>>>> ca13b39 (MED smart ops: AI gate, breathing map, analysis terminal, team tracking, rotating links)
   if (lat !== undefined) c.lat = +lat;
   if (lng !== undefined) c.lng = +lng;
   if (published !== undefined) c.published = !!published;
