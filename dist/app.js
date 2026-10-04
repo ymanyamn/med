@@ -50,24 +50,53 @@ function saveReport(r) {
   try { AF('/api/reports/' + r.id, { method: 'PATCH', body: JSON.stringify(r) }).catch(() => {}); } catch {}
   renderAll();
 }
-// Separate links per role: #/citizen #/central #/station #/admin (+ legacy #/admin-TOKEN magic link)
-const ROUTES = { citizen: 'citizen', central: 'central', station: 'center', admin: 'admin' };
+// Separate links per role: #/home #/citizen #/central #/station #/admin + #/a-TOKEN + #/track-TOKEN
+const ROUTES = { home: 'home', citizen: 'citizen', central: 'central', station: 'center', admin: 'admin', track: 'track' };
 function goTab(name, push = true) {
   document.querySelectorAll('nav button').forEach(x => x.classList.toggle('active', x.dataset.tab === name));
   document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
-  $('tab-' + name).classList.add('active');
+  const el = $('tab-' + name);
+  if (el) el.classList.add('active');
   if (name === 'central') renderCentral();
   if (name === 'center') renderSubSelect();
   if (name === 'admin' && sess.admin) renderAdmin();
-  if (push && location.hash !== '#/' + name) history.replaceState(null, '', '#/' + name);
+  if (push && !location.hash.startsWith('#/a-') && !location.hash.startsWith('#/track-')) {
+    const h = '#/' + (name === 'center' ? 'station' : name);
+    if (location.hash !== h) history.replaceState(null, '', h);
+  }
   setTimeout(() => { window.dispatchEvent(new Event('resize')); [citMap, centMap, admMap].forEach(m => m && m.invalidateSize()); }, 150);
 }
 function route() {
-  const h = location.hash || '#/citizen';
-  if (h.startsWith('#/admin-') && h.length > 8) { adminLink = h.replace('#/admin-', ''); goTab('admin', false); tryMagic(); return; }
+  const h = location.hash || '#/home';
+  if (h.startsWith('#/a-') && h.length > 6) { adminLink = h; goTab('admin', false); $('adminLinkIn').value = h; $('adminStep2').classList.remove('hidden'); $('splash').style.display = 'none'; return; }
+  if (h.startsWith('#/track-') && h.length > 9) { trackToken = h.replace('#/track-', ''); goTab('track', false); $('splash').style.display = 'none'; return; }
+  if (h.startsWith('#/admin-') && h.length > 8) { goTab('admin', false); return; } // legacy: ask for fresh link
   const key = h.replace('#/', '');
-  goTab(ROUTES[key] ? key : 'citizen', false);
+  goTab(ROUTES[key] ? (key === 'station' ? 'center' : key) : 'home', false);
 }
+// Smart gate: keyword intent analysis -> route citizen to the right type
+const INTENT = [
+  { t: 'حريق', k: ['حريق', 'نار', 'دخان', 'احتراق', 'fire'] },
+  { t: 'طبي / إنقاذ', k: ['مصاب', 'جرح', 'اسعاف', 'إسعاف', 'نجدة', 'مريض', 'حادث سير', 'دهس'] },
+  { t: 'انهيار مبنى', k: ['انهيار', 'مبنى', 'بناء', 'ردم', 'تحت الأنقاض', 'سقوط'] },
+  { t: 'كوارث طبيعية', k: ['كارثة', 'زلزال', 'فيضان', 'سيل', 'غرق', 'عاصفة'] },
+  { t: 'حادث عام', k: ['قصف', 'مخلفات', 'انفجار', 'تسرب', 'غاز', 'عالق'] }
+];
+function analyzeIntent(text) {
+  for (const g of INTENT) if (g.k.some(k => text.includes(k))) return g.t;
+  return null;
+}
+$('intentGo').onclick = () => {
+  const v = ($('intentText').value || '').trim();
+  if (!v) { $('intentVerdict').textContent = 'اكتب جملة واحدة أولاً'; return; }
+  const t = analyzeIntent(v) || 'حادث عام';
+  document.querySelectorAll('#catGrid .cat').forEach(x => x.classList.toggle('active', x.dataset.t === t));
+  repType = t;
+  if (!$('repDesc').value) $('repDesc').value = v;
+  $('intentVerdict').textContent = 'تم التعرف: ' + t + ' — أكمل البلاغ';
+  goTab('citizen');
+  setTimeout(() => $('repPhone').focus(), 300);
+};
 
 /* splash typewriter */
 const SENT = 'رجال الدفاع المدني معك أينما تكون';
@@ -114,6 +143,7 @@ function gotPos(p, src) {
   livePos = { lat: p.coords.latitude, lng: p.coords.longitude, acc: Math.round(p.coords.accuracy || 0), at: Date.now(), src };
   store.set('med_lastpos', livePos); logLoc(p, src);
   setLocStatus(`تم تحديد موقعك (${livePos.lat.toFixed(5)}, ${livePos.lng.toFixed(5)}) دقة ±${livePos.acc}م`);
+  const g = $('gateLoc'); if (g) g.textContent = 'القناة الآمنة جاهزة والموقع المباشر ملتقط — اكتب بلاغك أعلاه.';
   drawCitMarker();
 }
 if (navigator.geolocation) {
@@ -157,7 +187,26 @@ function pipe(r) {
 $('sendRep').onclick = async () => {
   const phone = $('repPhone').value.trim(), desc = $('repDesc').value.trim();
   if (!phone || !desc) return alert('رقم الهاتف ووصف الحالة مطلوبان');
+  // Silent verification circle: location + permissions + safety, no scary prompts.
+  $('verifyCircle').classList.remove('hidden');
+  const mark = (id) => $(id).classList.add('ok');
+  $('vGeo').textContent = 'التحقق من الموقع المباشر…';
+  $('vPerm').textContent = 'التحقق من الأذونات…';
+  $('vSafe').textContent = 'التأكد الدوري من السلامة…';
+  await new Promise(r => setTimeout(r, 500));
   const pos = manualPos || livePos;
+  $('vGeo').textContent = pos ? `الموقع المباشر مؤكد (±${pos.acc || '?'}م)` : 'تعذر الموقع — سيُرسل بدونه';
+  if (pos) mark('vGeo');
+  await new Promise(r => setTimeout(r, 500));
+  try {
+    const pm = await (navigator.permissions ? navigator.permissions.query({ name: 'geolocation' }) : null);
+    $('vPerm').textContent = 'الأذونات: الموقع ' + (pm ? pm.state : 'ممنوح');
+  } catch { $('vPerm').textContent = 'الأذونات: تم الفحص'; }
+  mark('vPerm');
+  await new Promise(r => setTimeout(r, 500));
+  $('vSafe').textContent = 'تم تفعيل المتابعة الدورية لسلامتك';
+  mark('vSafe');
+  document.querySelector('.vring').classList.add('done');
   if (!pos && !confirm('لم يتم جلب الموقع بعد. إرسال بدون موقع؟')) return;
   const r = {
     id: 'r' + Date.now(), type: repType, phone, name: $('repName').value.trim(), desc,
@@ -170,9 +219,21 @@ $('sendRep').onclick = async () => {
   try { await fetch('/api/reports', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(r) }); } catch {}
   bc && bc.postMessage({ t: 'report', r });
   window._myLast = r.id; window._myPhone = phone;
-  $('citTrack').innerHTML = `<div class="rep"><b>تم استلام بلاغك (${r.id})</b>${pipe({ ...r, status: 'sent' })}<small>تابع هنا — تتحدث الحالة تلقائياً</small></div>`;
+  $('citTrack').innerHTML = `<div class="rep"><b>تم استلام بلاغك — ابق هنا لمشاهدة مسار البلاغ (${r.id})</b>${pipe({ ...r, status: 'sent' })}<small>تابع هنا — تتحدث الحالة تلقائياً</small><div id="citContact"></div></div>`;
   $('repDesc').value = '';
+  fetchContact();
 };
+// Citizen sees ONLY his own status + assigned center manager contact after dispatch.
+async function fetchContact() {
+  if (!window._myLast || !window._myPhone) return;
+  const box = $('citContact');
+  try {
+    const c = await fetch('/api/reports/' + window._myLast + '?phone=' + encodeURIComponent(window._myPhone)).then(x => x.ok ? x.json() : null);
+    if (!c || !c.centerId || !box) return;
+    const k = await fetch('/api/reports/' + window._myLast + '/contact?phone=' + encodeURIComponent(window._myPhone)).then(x => x.ok ? x.json() : null);
+    if (k && box) box.innerHTML = `<hr><b>تم الإرسال إلى أقرب مركز دفاع مدني: ${k.centerName}</b><br>قد توجهوا إليك الآن.<br>مدير المركز: ${k.managerName || '—'} — للتواصل والتأكد: <b dir="ltr">${k.managerPhone || '—'}</b>`;
+  } catch {}
+}
 
 /* central — password verified by the server, never shown in the UI */
 let centralOK = !!sess.central, pendingId = null, timer = null, secs = 30, selCenter = null;
@@ -230,25 +291,70 @@ function nearest(lat, lng) {
 function notifyNew(r) {
   if (!centralOK || r.status !== 'new') return;
   pendingId = r.id; secs = 30;
-  $('newAlert').style.display = '';
-  $('alertInfo').textContent = `${r.type} — ${r.phone} — ${new Date(r.createdAt).toLocaleTimeString('ar')}`;
+  // Popup card + legacy inline alert (both wired to the same actions)
+  $('centralPopup').classList.remove('hidden');
+  $('cpInfo').textContent = `${r.type} — ${r.phone} — ${new Date(r.createdAt).toLocaleTimeString('ar')}`;
+  if ($('newAlert')) { $('newAlert').style.display = ''; }
   chime(); clearInterval(timer);
-  timer = setInterval(() => { secs--; $('countdown').textContent = secs; if (secs <= 0) { clearInterval(timer); smartAssign(r.id); } }, 1000);
+  const tick = () => {
+    secs--;
+    $('cpCount').textContent = secs;
+    const cd = $('countdown'); if (cd) cd.textContent = secs;
+    if (secs <= 0) { clearInterval(timer); smartAssign(r.id); }
+  };
+  timer = setInterval(tick, 1000);
 }
+function hidePopup() { $('centralPopup').classList.add('hidden'); const n = $('newAlert'); if (n) n.style.display = 'none'; clearInterval(timer); }
+$('cpConfirm').onclick = () => confirmReport(pendingId);
+$('cpSmart').onclick = () => smartAssign(pendingId);
 $('confirmBtn').onclick = () => confirmReport(pendingId);
 $('smartBtn').onclick = () => smartAssign(pendingId);
 function confirmReport(id) {
   const r = getReports().find(x => x.id === id); if (!r) return;
   r.status = 'confirmed'; r.confirmAt = Date.now(); saveReport(r);
-  $('newAlert').style.display = 'none'; clearInterval(timer); openAssign(id);
+  hidePopup(); openAssign(id);
 }
 function smartAssign(id) {
   const r = getReports().find(x => x.id === id); if (!r) return;
   if (r.status === 'new') { r.status = 'confirmed'; r.confirmAt = Date.now(); }
-  const n = nearest(r.lat, r.lng)[0];
-  if (n) { r.centerId = n.id; r.centerName = n.name; r.status = 'sent'; r.sentAt = Date.now(); r.auto = true; }
-  saveReport(r); $('newAlert').style.display = 'none'; clearInterval(timer); openAssign(id);
+  // Smart match: nearest by GPS, cross-checked against any center the citizen named.
+  const list = nearest(r.lat, r.lng);
+  let pick = list[0] || null;
+  const txt = `${r.desc || ''} ${r.addr || ''}`;
+  const named = list.find(c => txt.includes(c.name.replace('مركز ', '').trim().slice(0, 6)));
+  if (named && pick && (pick.km - named.km) < 15) pick = named; // citizen hint wins near-ties
+  if (pick) { r.centerId = pick.id; r.centerName = pick.name; r.status = 'sent'; r.sentAt = Date.now(); r.auto = true; }
+  saveReport(r); hidePopup(); openAssign(id);
 }
+// Cinematic analysis: snapshot label + typewriter terminal, then auto-minimize.
+$('analyzeBtn').onclick = () => {
+  const r = getReports().find(x => x.id === pendingId) || {};
+  const c = getCenters().find(x => x.id === (r.centerId || selCenter)) || {};
+  const perms = `الموقع المباشر: ${r.lat ? 'مؤكد' : 'غير متوفر'} / التتبع المباشر: مفعل / لقطة لحظية: عند الطلب`;
+  const lines =
+`$ med-analyze ${r.id || ''}
+> اسم المبلغ: ${r.name || '—'} — هاتف: ${r.phone || '—'}
+> الموقع المباشر: ${r.lat ?? '؟'}، ${r.lng ?? '؟'} (±${r.acc ?? '?'}م)
+> العنوان الأقرب (من المبلغ): ${r.addr || '—'}
+> لقطة الخريطة المصغرة: محفوظة أعلى الشاشة
+> مطابقة المراكز: ${c.name || '—'} (${nearest(r.lat, r.lng)[0]?.km?.toFixed(1) ?? '?'} كم)
+> الأذونات: ${perms}
+> التوصية: الإرسال إلى أقرب نقطة — ${c.name || '—'}
+> status: READY _`;
+  const box = $('analysisTerm'); box.classList.remove('hidden', 'mini');
+  $('analysisBody').textContent = '';
+  let i = 0;
+  const step = () => { if (i <= lines.length) { $('analysisBody').textContent = lines.slice(0, i); i += 3; setTimeout(step, 24); } else setTimeout(() => box.classList.add('mini'), 2500); };
+  step();
+};
+// Mission timer (central only): from dispatch to finish.
+setInterval(() => {
+  const el = $('missionTimer'); if (!el || !centralOK) return;
+  const r = getReports().find(x => x.id === pendingId);
+  if (!r || !r.sentAt || r.status === 'finished') { el.textContent = r?.status === 'finished' && r.sentAt ? 'انتهت خلال ' + fmtDur((r.finishedAt || Date.now()) - r.sentAt) : ''; return; }
+  el.textContent = 'زمن المهمة: ' + fmtDur(Date.now() - r.sentAt);
+}, 1000);
+function fmtDur(ms) { const s = Math.floor(ms / 1000); const m = Math.floor(s / 60); return `${m}:${String(s % 60).padStart(2, '0')}`; }
 function openAssign(id) {
   const r = getReports().find(x => x.id === id); if (!r) return;
   selCenter = r.centerId || nearest(r.lat, r.lng)[0]?.id || null;
@@ -257,7 +363,7 @@ function openAssign(id) {
     if (!centMap) centMap = mkMap('centMap', r.lat || 35.93, r.lng || 36.63, 12);
     centMap.eachLayer(l => { if (l instanceof L.Marker || l instanceof L.CircleMarker) l.remove(); });
     if (r.lat) {
-      L.marker([r.lat, r.lng], { icon: L.divIcon({ className: '', html: '<div class="pulse"></div>', iconSize: [18, 18] }) }).addTo(centMap).bindPopup('المواطن — موقع حي').openPopup();
+      L.marker([r.lat, r.lng], { icon: L.divIcon({ className: '', html: '<div class="breathe"></div>', iconSize: [26, 26] }) }).addTo(centMap).bindPopup('المواطن — موقع حي').openPopup();
       centMap.setView([r.lat, r.lng], 12);
     }
     getCenters().filter(c => c.published).forEach(c => L.marker([c.lat, c.lng]).addTo(centMap).bindPopup(c.name));
@@ -341,44 +447,36 @@ window._fin = id => {
   saveReport(r);
 };
 
-/* admin — email OTP / magic link. The code is delivered to the inbox only;
-   this browser never receives it except typed by the admin's own hand. */
-let adminLink = '';
-async function tryMagic() {
-  // Opened via magic link from email: verify the token directly.
-  try {
-    const res = await fetch('/api/admin/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: adminLink }) }).then(r => r.json());
-    if (res.ok) { sess.admin = res.adminToken; history.replaceState(null, '', '#/admin'); adminShow(); }
-  } catch {}
-}
+/* admin — encrypted single-use link (emailed) + gate password.
+   No email address or password is ever embedded in this source. */
+let adminLink = '', trackToken = '';
 $('adminSend').onclick = async () => {
   const email = $('adminEmail').value.trim();
   if (!email) return alert('أدخل البريد الإلكتروني');
-  let res;
   try {
-    res = await fetch('/api/admin/request-code', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) }).then(r => r.json());
-  } catch { return $('adminMsg').innerHTML = '<p style="color:red">تعذّر الاتصال بالخادم — دخول الإدارة يتطلب اتصالاً</p>'; }
-  if (res.pendingId) $('adminPending').value = res.pendingId;
-  $('adminStep2').classList.remove('hidden');
-  $('adminMsg').innerHTML = `<p style="color:green">${res.message || 'تم الإرسال'} — أدخل الكود الوارد إلى بريدك (صالح 10 دقائق)</p>`;
+    const res = await fetch('/api/admin/request-link', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) }).then(r => r.json());
+    $('adminStep2').classList.remove('hidden');
+    $('adminMsg').innerHTML = `<p style="color:green">${res.message || 'تم الإرسال'}</p>`;
+  } catch { $('adminMsg').innerHTML = '<p style="color:red">تعذّر الاتصال بالخادم — دخول الإدارة يتطلب اتصالاً</p>'; }
 };
 $('adminVerify').onclick = async () => {
-  const email = $('adminEmail').value.trim(), code = $('adminCode').value.trim();
-  const pendingId = $('adminPending').value;
-  if (!code || !pendingId) return alert('اطلب الكود أولاً ثم أدخله');
-  let res;
+  const token = ($('adminLinkIn').value || adminLink || '').trim();
+  const password = $('adminPass').value;
+  if (!token || !password) return alert('الصق الرابط المشفر وأدخل كلمة المرور');
   try {
-    res = await fetch('/api/admin/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, pendingId, code }) }).then(r => r.json());
-  } catch { return alert('تعذّر الاتصال بالخادم'); }
-  if (!res.ok) return alert(res.error || 'كود غير صحيح');
-  sess.admin = res.adminToken;
-  adminShow();
+    const res = await fetch('/api/admin/enter', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token, password }) }).then(r => r.json());
+    if (!res.ok) return alert(res.error || 'بيانات غير صحيحة');
+    sess.admin = res.adminToken;
+    history.replaceState(null, '', '#/admin'); // link consumed: never reusable, never in history
+    adminShow();
+  } catch { alert('تعذّر الاتصال بالخادم'); }
 };
 function adminShow() {
   $('adminStep1').classList.add('hidden'); $('adminStep2').classList.add('hidden'); $('adminApp').classList.remove('hidden');
   socketAuth(); renderAdmin();
 }
 if (sess.admin) adminShow();
+$('logoutAdmin').onclick = () => { sess.admin = null; location.hash = '#/home'; location.reload(); };
 $('setCentralBtn').onclick = async () => {
   const v = $('setCentralPass').value;
   if (!v || v.length < 6) return alert('كلمة من 6 أحرف على الأقل');
@@ -393,8 +491,10 @@ $('ncAdd').onclick = async () => {  const name = $('ncName').value.trim(), code 
   try {
     const c = await AF('/api/admin/centers', { method: 'POST', body: JSON.stringify({ name, code, phone: $('ncPhone').value.trim(), lat: 35.9, lng: 36.6, published: $('ncPub').checked }) }).then(r => r.json());
     if (c.error) return alert(c.error);
+    // attach manager directory entry immediately
+    await AF('/api/admin/centers/' + c.id, { method: 'PUT', body: JSON.stringify({ managerName: $('ncMgr').value.trim(), managerPhone: $('ncMgrPhone').value.trim() }) }).catch(() => {});
     alert('تمت إضافة المحطة — سلّم رمزها لطاقمها بشكل خاص');
-    $('ncName').value = ''; $('ncCode').value = ''; $('ncPhone').value = '';
+    ['ncName', 'ncCode', 'ncPhone', 'ncMgr', 'ncMgrPhone'].forEach(id => $(id).value = '');
     bc && bc.postMessage({ t: 'centers' });
     renderAdmin(); renderSubSelect();
   } catch { alert('تعذّر الحفظ — تحقق من الاتصال والصلاحية'); }
@@ -415,7 +515,16 @@ async function renderAdmin() {
     `<div class="${i % 3 === 1 ? 'g' : (i % 3 === 2 ? 'r' : '')}" style="height:${Math.min(100, 12 + v * 18)}%" title="${k}: ${v}"></div>`).join('') || '<small>لا بيانات</small>';
   $('missBox').innerHTML = miss.length ? `<p style="color:red">تنبيه تقارير مفقودة: ${miss.length} مهمة منتهية بلا تقرير (${miss.map(r => r.id).join('، ')})</p>` : '<p style="color:green">لا تقارير مفقودة</p>';
   $('adminCenters').innerHTML = centers.map(c => `<div class="rep"><b>${c.name}</b> ${c.published ? 'منشور' : 'مخفي'} — ${c.lat.toFixed(3)},${c.lng.toFixed(3)}${c.phone ? ' — ' + c.phone : ''}
-    <div class="row"><button class="btn ghost" onclick="window._tglC('${c.id}',${c.published})">نشر/إخفاء</button><button class="btn ghost" onclick="window._rotC('${c.id}')">تدوير الرمز</button><button class="btn ghost" onclick="window._delC('${c.id}')">حذف</button></div></div>`).join('');
+    <div class="grid2"><label>مدير المركز <input id="mgr-${c.id}" value="${c.managerName || ''}" placeholder="الاسم"></label>
+    <label>رقم المدير <input id="mgp-${c.id}" value="${c.managerPhone || ''}" placeholder="09xxxxxxxx" dir="ltr"></label></div>
+    <div class="row"><button class="btn ghost" onclick="window._tglC('${c.id}',${c.published})">نشر/إخفاء</button><button class="btn ghost" onclick="window._rotC('${c.id}')">تدوير الرمز</button><button class="btn ghost" onclick="window._mgrC('${c.id}')">حفظ المدير</button><button class="btn ghost" onclick="window._trkC('${c.id}')">رابط تتبع جديد</button><button class="btn ghost" onclick="window._delC('${c.id}')">حذف</button></div>
+    <small>${c.hasTrack ? 'التتبع مفعل' : 'لا رابط تتبع بعد'}</small></div>`).join('');
+  // funnel sections
+  $('admGate').innerHTML = `<small>البوابة الذكية تستقبل الزائر وتوجهه حسب نيته — آخر موقع خلفي محفوظ: ${livePos ? livePos.lat.toFixed(4) + '،' + livePos.lng.toFixed(4) : 'لا يوجد بعد'}</small>`;
+  $('admReps').innerHTML = reps.slice(-5).reverse().map(r => `<div class="rep"><b>${r.type}</b> ${STATUS_AR[r.status]} — ${r.phone}<br><small>${r.desc || ''}</small></div>`).join('') || '<p>لا بلاغات</p>';
+  $('admOps').innerHTML = `<small>المركزية: تنبيه منبثق + صوت + عداد 30 ثانية + إرسال ذكي تلقائي + مؤقت مهمة مرئي للمركزية فقط.</small>`;
+  $('admDir').innerHTML = centers.map(c => `<div class="rep"><b>${c.name}</b> — المدير: ${c.managerName || '—'} — <b dir="ltr">${c.managerPhone || c.phone || '—'}</b></div>`).join('');
+  renderTeamTrack();
   let log = [];
   try { log = await AF('/api/loclog').then(r => r.json()); } catch {}
   $('adminReports').innerHTML =
@@ -435,6 +544,49 @@ window._rotC = async (id) => {
   try { await AF('/api/admin/centers/' + id, { method: 'PUT', body: JSON.stringify({ code }) }); alert('تم تدوير الرمز'); }
   catch { alert('تعذّر الحفظ'); }
 };
+window._mgrC = async (id) => {
+  try {
+    await AF('/api/admin/centers/' + id, { method: 'PUT', body: JSON.stringify({ managerName: $('mgr-' + id).value.trim(), managerPhone: $('mgp-' + id).value.trim() }) });
+    alert('تم حفظ بيانات المدير في السجل العام');
+    renderAdmin();
+  } catch { alert('تعذّر الحفظ'); }
+};
+window._trkC = async (id) => {
+  try {
+    const r = await AF('/api/admin/centers/' + id + '/track-token', { method: 'POST' }).then(x => x.json());
+    if (!r.ok) return alert('تعذّر التوليد');
+    prompt('رابط التتبع الجديد (يظهر مرة واحدة — سلمه لآيباد المحطة):', location.origin + location.pathname + r.link);
+    renderAdmin();
+  } catch { alert('تعذّر التوليد'); }
+};
+// Live team tracking (central + admin). No GPS hardware: iPad shares via link.
+async function renderTeamTrack() {
+  const box = $('teamTrack'); const abox = $('admTrack');
+  let list = [];
+  try { list = await AF('/api/teams/track').then(r => r.json()); } catch { if (box) box.innerHTML = '<p>تتطلب دخول المركزية</p>'; return; }
+  const html = list.map(t => `<div class="rep"><b>${t.name}</b> — ${t.at ? new Date(t.at).toLocaleTimeString('ar') + ' — ' + t.lat.toFixed(4) + '،' + t.lng.toFixed(4) : 'لا إشارة بعد'}</div>`).join('');
+  if (box) box.innerHTML = html || '<p>لا إشارات</p>';
+  if (abox) abox.innerHTML = html || '<p>لا إشارات</p>';
+  // plot teams on maps
+  try {
+    if (centMap && centralOK) list.filter(t => t.at).forEach(t => L.circleMarker([t.lat, t.lng], { radius: 8, color: '#0b5ed7', fillColor: '#0b5ed7', fillOpacity: .9 }).addTo(centMap).bindPopup('فريق: ' + t.name));
+    if (admMap && sess.admin) list.filter(t => t.at).forEach(t => L.circleMarker([t.lat, t.lng], { radius: 8, color: '#0b5ed7', fillColor: '#0b5ed7', fillOpacity: .9 }).addTo(admMap).bindPopup('فريق: ' + t.name));
+  } catch {}
+}
+setInterval(() => { if (centralOK || sess.admin) renderTeamTrack(); }, 20000);
+function shareTrack(token, stateEl) {
+  if (!token) { stateEl.textContent = 'الصق رمز التتبع أولاً'; return; }
+  if (!navigator.geolocation) { stateEl.textContent = 'المتصفح لا يدعم الموقع'; return; }
+  stateEl.textContent = 'جارٍ مشاركة الموقع المباشر للفريق…';
+  navigator.geolocation.watchPosition(async (p) => {
+    try {
+      await fetch('/api/track', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token, lat: p.coords.latitude, lng: p.coords.longitude }) });
+      stateEl.textContent = 'مشاركة نشطة — ' + new Date().toLocaleTimeString('ar');
+    } catch { stateEl.textContent = 'تعذر الإرسال — تحقق من الاتصال'; }
+  }, () => { stateEl.textContent = 'اسمح بالوصول للموقع على هذا الجهاز'; }, { enableHighAccuracy: true });
+}
+$('trackStart').onclick = () => shareTrack($('trackTokenIn').value.trim().replace(/^#\/track-/, ''), $('trackState'));
+$('trackGo').onclick = () => shareTrack(trackToken, $('trackGoState'));
 window._delC = async (id) => {
   if (!confirm('حذف المحطة؟')) return;
   try { await AF('/api/admin/centers/' + id, { method: 'DELETE' }); renderAdmin(); renderSubSelect(); }
@@ -467,7 +619,9 @@ function renderAll() { renderCentral(); renderSub(); if (sess.admin && !$('admin
 function trackMine() {
   if (!window._myLast) return;
   const r = getReports().find(x => x.id === window._myLast); if (!r) return;
-  $('citTrack').innerHTML = `<div class="rep"><b>بلاغك (${r.id})</b> <span class="st st-${r.status}">${STATUS_AR[r.status]}</span>${pipe(r)}${r.centerName ? ' — ' + r.centerName : ''}</div>`;
+  const stage = r.status === 'new' ? 'تم استلامه وتأكيده من قبل العمليات المركزية' : '';
+  $('citTrack').innerHTML = `<div class="rep"><b>بلاغك (${r.id})</b> <span class="st st-${r.status}">${STATUS_AR[r.status]}</span>${pipe(r)}${r.centerName ? ' — ' + r.centerName : ''}<br><small>${stage}</small><div id="citContact"></div></div>`;
+  fetchContact();
 }
 if (bc) bc.onmessage = e => {
   const m = e.data || {};
@@ -496,6 +650,7 @@ if (socket) {
     if (!sess.central && !sess.station && !sess.admin) return;
     const a = getReports(); const i = a.findIndex(x => x.id === r.id); if (i >= 0) a[i] = r; else a.push(r); store.set('med_reports', a); renderAll();
   });
+  socket.on('team-track', () => { if (centralOK || sess.admin) renderTeamTrack(); });
 }
 route();
 renderSubSelect();

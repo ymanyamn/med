@@ -19,10 +19,12 @@ app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 const DB_FILE = path.join(__dirname, 'med-db.json');
-// Admin inbox: ONLY this address can receive login codes. Configurable via env.
+// Admin inbox: ONLY this address can receive login links. Configurable via env.
 const ADMIN_EMAIL = (process.env.MED_ADMIN_EMAIL || 'redmimhmdov@gmail.com').toLowerCase();
 
 const sha256 = (s) => crypto.createHash('sha256').update(String(s)).digest('hex');
+// Admin gate password (second factor after the encrypted link). Never sent to clients.
+const ADMIN_PASS_HASH = sha256(process.env.MED_ADMIN_PASS || '1992');
 const randPass = (n = 10) => crypto.randomBytes(n).toString('base64').replace(/[^a-zA-Z0-9]/g, '').slice(0, n) || 'Med' + Date.now().toString(36);
 const randTok = (p = '') => p + crypto.randomBytes(24).toString('hex');
 
@@ -32,7 +34,7 @@ const stationTokens = {}; // token -> centerId
 
 function seedCenters() {
   const mk = (id, name, code, phone, lat, lng, published) =>
-    ({ id, name, codeHash: sha256(code), phone, lat, lng, published });
+    ({ id, name, codeHash: sha256(code), phone, lat, lng, published, managerName: '', managerPhone: '', trackHash: null });
   return [
     mk('c1', 'مركز إدلب المركزي', '1001', '0950000001', 35.9306, 36.6339, true),
     mk('c2', 'مركز حلب — الأتارب', '1002', '0950000002', 36.1372, 36.9733, true),
@@ -65,11 +67,13 @@ function loadDB() {
     console.log(`[MED] INITIAL central password (give privately to ops room, then change it): ${pw}`);
   }
   db.reports = db.reports || []; db.loclog = db.loclog || []; db.otps = db.otps || {};
+  db.adminLinks = db.adminLinks || {}; // token -> {exp} single-use, rotated after each session
+  db.tracks = db.tracks || {}; // centerId -> {lat,lng,at}
   return db;
 }
 function saveDB(db) {
-  const { otps, ...persist } = db;
-  fs.writeFileSync(DB_FILE, JSON.stringify({ ...persist, otps: {} }, null, 2));
+  const { otps, adminLinks, ...persist } = db;
+  fs.writeFileSync(DB_FILE, JSON.stringify({ ...persist, otps: {}, adminLinks: {} }, null, 2));
 }
 let db = loadDB();
 saveDB(db);
@@ -92,8 +96,8 @@ const need = (...roles) => (req, res, next) => {
 
 // Public view of a center: NEVER code/codeHash. Phone only for staff.
 const pubCenter = (c) => ({ id: c.id, name: c.name, lat: c.lat, lng: c.lng, published: c.published });
-const staffCenter = (c) => ({ ...pubCenter(c), phone: c.phone });
-const adminCenter = (c) => ({ ...staffCenter(c), hasCode: !!c.codeHash });
+const staffCenter = (c) => ({ ...pubCenter(c), phone: c.phone, managerName: c.managerName || '', managerPhone: c.managerPhone || '' });
+const adminCenter = (c) => ({ ...staffCenter(c), hasCode: !!c.codeHash, hasTrack: !!c.trackHash });
 
 // ---- PUBLIC ----
 app.get('/api/centers', (req, res) => res.json(db.centers.filter(c => c.published).map(pubCenter)));
@@ -118,8 +122,32 @@ app.get('/api/reports/:id', (req, res) => {
   res.json(r);
 });
 
-// ---- CENTRAL (password, verified server-side) ----
+// Citizen contact card: ONLY after dispatch, ONLY with the report phone.
+app.get('/api/reports/:id/contact', (req, res) => {
+  const r = db.reports.find(x => x.id === req.params.id);
+  if (!r || (req.query.phone || '') !== r.phone || !r.centerId) return res.status(404).json({ error: 'not found' });
+  const c = db.centers.find(x => x.id === r.centerId);
+  if (!c) return res.status(404).json({ error: 'not found' });
+  res.json({ centerName: c.name, managerName: c.managerName || '', managerPhone: c.managerPhone || c.phone || '' });
+});
+
+// ---- TEAM TRACKING (iPad per station, no GPS hardware) ----
+// iPad opens /#/track-<token>, shares position; central/admin watch live.
+app.post('/api/track', (req, res) => {
+  const { token, lat, lng } = req.body || {};
+  if (!token || lat === undefined || lng === undefined) return res.status(400).json({ error: 'bad' });
+  const c = db.centers.find(x => x.trackHash && x.trackHash === sha256(String(token)));
+  if (!c) return res.status(401).json({ error: 'unauthorized' });
+  db.tracks[c.id] = { lat: +lat, lng: +lng, at: Date.now() };
+  saveDB(db);
+  io.to('central').emit('team-track', { centerId: c.id, ...db.tracks[c.id] });
+  res.json({ ok: true });
+});
+app.get('/api/teams/track', need('central', 'admin'), (req, res) => {
+  res.json(db.centers.map(c => ({ centerId: c.id, name: c.name, ...(db.tracks[c.id] || { lat: null, lng: null, at: 0 }) })));
+});
 app.post('/api/central/login', (req, res) => {
+  // ---- CENTRAL (password, verified server-side) ----
   const { password } = req.body || {};
   if (!password || sha256(password) !== db.settings.centralHash) {
     return res.status(401).json({ error: 'كلمة المرور غير صحيحة' });
@@ -155,7 +183,33 @@ app.post('/api/station/login', (req, res) => {
   res.json({ ok: true, token: t, center: staffCenter(c) });
 });
 
-// ---- ADMIN (email OTP + magic link; secrets only via the inbox/stdout) ----
+// ---- ADMIN: encrypted single-use link (emailed) + gate password ----
+app.post('/api/admin/request-link', (req, res) => {
+  const { email } = req.body || {};
+  if ((email || '').trim().toLowerCase() !== ADMIN_EMAIL) {
+    return res.json({ ok: true, message: 'إن كان البريد مسجلاً ستصلك رسالة دخول' });
+  }
+  const token = 'A-' + crypto.randomBytes(24).toString('hex');
+  db.adminLinks[token] = { exp: Date.now() + 30 * 60 * 1000 };
+  // PRODUCTION: email `#/a-<token>` to ADMIN_EMAIL via SMTP here.
+  // TEST MODE: server console only — NEVER returned to the browser.
+  console.log(`[MED] admin magic link: #/a-${token} (valid 30 min, single-use, rotated after session)`);
+  res.json({ ok: true, message: 'تم إرسال الرابط المشفر إلى بريد المدير (صالح 30 دقيقة، لمرة واحدة)' });
+});
+app.post('/api/admin/enter', (req, res) => {
+  const { token, password } = req.body || {};
+  const tk = String(token || '').replace(/^#\/a-/, '').replace(/^a-/, 'A-');
+  const norm = tk.startsWith('A-') ? tk : null;
+  const rec = norm && db.adminLinks[norm];
+  if (!rec) return res.status(401).json({ error: 'رابط غير صالح — اطلب رابطاً جديداً' });
+  if (Date.now() > rec.exp) { delete db.adminLinks[norm]; return res.status(400).json({ error: 'انتهت صلاحية الرابط' }); }
+  if (!password || sha256(String(password)) !== ADMIN_PASS_HASH) return res.status(401).json({ error: 'كلمة المرور غير صحيحة' });
+  delete db.adminLinks[norm]; // single-use: link dies when the session starts
+  db.adminToken = randTok('adm-');
+  db.otps = {};
+  saveDB(db);
+  res.json({ ok: true, adminToken: db.adminToken });
+});
 app.post('/api/admin/request-code', (req, res) => {
   const { email } = req.body || {};
   if ((email || '').trim().toLowerCase() !== ADMIN_EMAIL) {
@@ -199,9 +253,11 @@ app.post('/api/admin/centers', need('admin'), (req, res) => {
 app.put('/api/admin/centers/:id', need('admin'), (req, res) => {
   const c = db.centers.find(x => x.id === req.params.id);
   if (!c) return res.status(404).json({ error: 'not found' });
-  const { name, code, phone, lat, lng, published } = req.body || {};
+  const { name, code, phone, lat, lng, published, managerName, managerPhone } = req.body || {};
   if (name !== undefined) c.name = name;
   if (phone !== undefined) c.phone = phone;
+  if (managerName !== undefined) c.managerName = String(managerName);
+  if (managerPhone !== undefined) c.managerPhone = String(managerPhone);
   if (lat !== undefined) c.lat = +lat;
   if (lng !== undefined) c.lng = +lng;
   if (published !== undefined) c.published = !!published;
@@ -211,6 +267,16 @@ app.put('/api/admin/centers/:id', need('admin'), (req, res) => {
 app.delete('/api/admin/centers/:id', need('admin'), (req, res) => {
   db.centers = db.centers.filter(x => x.id !== req.params.id);
   saveDB(db); res.json({ ok: true });
+});
+app.post('/api/admin/centers/:id/track-token', need('admin'), (req, res) => {
+  const c = db.centers.find(x => x.id === req.params.id);
+  if (!c) return res.status(404).json({ error: 'not found' });
+  // Shown ONCE to the admin; hand it to the station iPad privately.
+  // Only the hash is stored; the iPad link is #/track-<token>.
+  const token = 'T-' + crypto.randomBytes(18).toString('hex');
+  c.trackHash = sha256(token);
+  saveDB(db);
+  res.json({ ok: true, token, link: `#/track-${token}` });
 });
 app.post('/api/admin/central-password', need('admin'), (req, res) => {
   const { newPassword } = req.body || {};

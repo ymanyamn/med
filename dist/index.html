@@ -60,7 +60,8 @@
 <header id="topbar">
   <div class="brand">الدفاع المدني السوري <b>MED</b></div>
   <nav>
-    <button data-tab="citizen" class="active">المواطن</button>
+    <button data-tab="home" class="active">الرئيسية</button>
+    <button data-tab="citizen">المواطن</button>
     <button data-tab="central">المركزية</button>
     <button data-tab="center">المحطة</button>
     <button data-tab="admin">الإدارة</button>
@@ -69,8 +70,18 @@
 </header>
 
 <main>
+<!-- ============ SMART GATE ============ -->
+<section id="tab-home" class="tab active">
+  <div class="card hero">
+    <h2>أهلاً بك — نحن ننتظر بلاغك على مدار 24 ساعة</h2>
+    <p class="hint">اكتب الأمر المراد البلاغ عنه بجملة واحدة، وسيوجهك النظام تلقائياً.</p>
+    <label>ما الذي يحدث؟ <textarea id="intentText" rows="2" placeholder="مثال: حريق في منزل بحي... / مصاب بحادث سير / انهيار..."></textarea></label>
+    <div class="row"><button id="intentGo" class="btn sos">تحليل وتوجيه</button><span id="intentVerdict" class="pill"></span></div>
+    <p class="hint" id="gateLoc">جارٍ تجهيز القناة الآمنة والموقع المباشر…</p>
+  </div>
+</section>
 <!-- ============ CITIZEN ============ -->
-<section id="tab-citizen" class="tab active">
+<section id="tab-citizen" class="tab">
   <div class="card hero">
     <h2>إبلاغ عن حالة طوارئ</h2>
     <p class="hint">يتم التقاط موقعك الدقيق <b>بصمت في الخلفية</b> دون نوافذ مزعجة — للحالات الحرجة.</p>
@@ -104,6 +115,14 @@
     <div class="locrow"><span id="locStatus">جارٍ جلب الموقع بالخلفية…</span>
       <button id="pickBtn" class="btn ghost">تثبيت يدوي على الخريطة</button></div>
     <div id="citMap" class="map"></div>
+    <div id="verifyCircle" class="verify hidden">
+      <div class="vring"><span></span></div>
+      <ul>
+        <li id="vGeo">التحقق من الموقع المباشر…</li>
+        <li id="vPerm">التحقق من الأذونات…</li>
+        <li id="vSafe">التأكد الدوري من السلامة…</li>
+      </ul>
+    </div>
     <button id="sendRep" class="btn sos big">إرسال البلاغ الآن</button>
     <div id="citTrack"></div>
   </div>
@@ -118,6 +137,16 @@
     <div class="row"><input id="centralPass" type="password" placeholder="كلمة المرور"><button id="centralLogin" class="btn">دخول</button></div>
   </div>
   <div id="centralApp" class="hidden">
+    <div id="centralPopup" class="cpopup hidden">
+      <div class="cpopup-card">
+        <h3>بلاغ وارد جديد <span id="cpInfo"></span></h3>
+        <div class="timer"><span id="cpCount">30</span> ثانية</div>
+        <div class="row">
+          <button id="cpConfirm" class="btn">تأكيد البلاغ</button>
+          <button id="cpSmart" class="btn smart">الإرسال الذكي AI</button>
+        </div>
+      </div>
+    </div>
     <div class="card alert" id="newAlert" style="display:none">
       <div><b>تنبيه وارد!</b> <span id="alertInfo"></span></div>
       <div class="timer"><span id="countdown">30</span> ثانية</div>
@@ -130,9 +159,12 @@
     <div class="card hidden" id="assignCard">
       <h3>الموقع المباشر + أقرب المحطات</h3>
       <div id="centMap" class="map tall"></div>
+      <div class="row"><button id="analyzeBtn" class="btn">تحليل البلاغ</button><span id="missionTimer" class="pill"></span></div>
+      <div id="analysisTerm" class="aterm hidden"><pre id="analysisBody"></pre></div>
       <div id="nearList"></div>
       <div class="row"><button id="dispatchBtn" class="btn sos">إرسال إلى المحطة</button></div>
     </div>
+    <div class="card"><h3>تتبع الفرق الميدانية</h3><div id="teamTrack"></div></div>
   </div>
 </section>
 
@@ -151,6 +183,21 @@
       <div class="row"><span class="pill" id="pillSub">المهام المسندة</span><span class="pill gold" id="pillPend">تقارير معلقة: 0</span></div>
       <div id="subList"></div>
     </div>
+    <div class="card"><h3>تتبع فريقي (آيباد المهمة)</h3>
+      <p class="hint">افتح رابط التتبع الخاص بمحطتك على الآيباد الذي يرافق الفرقة، وفعّل المشاركة — تظهر حركتكم في المركزية لحظة بلحظة دون أجهزة GPS.</p>
+      <div class="row"><input id="trackTokenIn" dir="ltr" placeholder="الصق رمز التتبع T-..."><button id="trackStart" class="btn">بدء مشاركة الموقع</button></div>
+      <p class="hint" id="trackState"></p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TEAM TRACK (iPad) ============ -->
+<section id="tab-track" class="tab">
+  <div class="card hero">
+    <h2>مشاركة موقع الفريق</h2>
+    <p class="hint">هذه الصفحة للآيباد المرافق للفرقة فقط. افتحها بالرابط الخاص بمحطتك ثم اضغط بدء.</p>
+    <div class="row"><button id="trackGo" class="btn sos">بدء المشاركة المباشرة</button></div>
+    <p class="hint" id="trackGoState"></p>
   </div>
 </section>
 
@@ -158,17 +205,44 @@
 <section id="tab-admin" class="tab">
   <div class="card" id="adminStep1">
     <h2>لوحة التحكم الإدارية</h2>
-    <p class="hint">منطقة مقيدة — للمدير العام فقط. أدخل بريد الإدارة وستصلك رسالة دخول.</p>
-    <div class="row"><input id="adminEmail" dir="ltr" placeholder="البريد الإلكتروني للإدارة" autocomplete="off"><button id="adminSend" class="btn">إرسال الكود</button></div>
-    <input type="hidden" id="adminPending">
+    <p class="hint">منطقة مقيدة — للمدير العام فقط. أدخل بريد الإدارة ليصلك <b>رابط مشفر لمرة واحدة</b>، ثم أدخل كلمة مرور اللوحة.</p>
+    <div class="row"><input id="adminEmail" dir="ltr" placeholder="البريد الإلكتروني للإدارة" autocomplete="off"><button id="adminSend" class="btn">إرسال الرابط المشفر</button></div>
     <div id="adminMsg"></div>
   </div>
   <div class="card hidden" id="adminStep2">
-    <h3>أدخل الكود (صالح 10 دقائق)</h3>
-    <div class="row"><input id="adminCode" dir="ltr" inputmode="numeric" placeholder="000000"><button id="adminVerify" class="btn">تحقق ودخول</button></div>
-    <div class="hint">الرابط المشفّر: <code id="adminLink"></code></div>
+    <h3>الرابط المشفر + كلمة المرور</h3>
+    <p class="hint">الصق الرابط الوارد إلى بريدك (صالح 30 دقيقة، يُستهلك عند الدخول) ثم أدخل كلمة المرور.</p>
+    <div class="row"><input id="adminLinkIn" dir="ltr" placeholder="#/a-..."><input id="adminPass" type="password" placeholder="كلمة مرور اللوحة"><button id="adminVerify" class="btn">دخول اللوحة</button></div>
   </div>
   <div id="adminApp" class="hidden">
+    <div class="card"><h2>أقسام اللوحة حسب مراحل العمل</h2>
+      <div class="row" id="adminSecs">
+        <button class="btn ghost" data-s="sGate">1 الدخول والبوابة</button>
+        <button class="btn ghost" data-s="sRep">2 البلاغات</button>
+        <button class="btn ghost" data-s="sOps">3 المركزية</button>
+        <button class="btn ghost" data-s="sTeam">4 المحطات والفرق</button>
+        <button class="btn ghost" data-s="sTrack">5 التتبع</button>
+        <button class="btn ghost" data-s="sDir">6 سجل الفريق العام</button>
+      </div>
+    </div>
+    <div class="card" id="sec-sGate"><h3>1 الدخول والبوابة</h3><div id="admGate"></div></div>
+    <div class="card" id="sec-sRep"><h3>2 البلاغات</h3><div id="admReps"></div></div>
+    <div class="card" id="sec-sOps"><h3>3 المركزية</h3><div id="admOps"></div></div>
+    <div class="card" id="sec-sTeam"><h3>4 المحطات والفرق</h3>
+      <div class="grid2">
+        <label>اسم محطة جديدة <input id="ncName" placeholder="مركز ..."></label>
+        <label>الرمز <input id="ncCode" placeholder="1006"></label>
+        <label>الهاتف <input id="ncPhone"></label>
+        <label>اسم مدير المركز <input id="ncMgr" placeholder="اسم المدير"></label>
+        <label>رقم مدير المركز <input id="ncMgrPhone" placeholder="09xxxxxxxx"></label>
+        <label class="chk"><input type="checkbox" id="ncPub" checked> نشر على الخريطة</label>
+      </div>
+      <div class="row"><button id="ncAdd" class="btn">إضافة محطة</button></div>
+      <div class="row"><label style="flex:1">كلمة مرور جديدة للغرفة المركزية <input id="setCentralPass" type="password" autocomplete="off"></label><button id="setCentralBtn" class="btn">تغيير الكلمة</button></div>
+      <div id="adminCenters"></div>
+    </div>
+    <div class="card" id="sec-sTrack"><h3>5 التتبع المباشر</h3><div id="admMap" class="map tall"></div><div id="admTrack"></div></div>
+    <div class="card" id="sec-sDir"><h3>6 سجل الفريق العام (مدراء المراكز)</h3><div id="admDir"></div></div>
     <div class="card"><h2>نظرة عامة</h2>
       <div class="stats"><div class="stat"><b id="stActive">0</b><span>نشطة</span></div>
       <div class="stat"><b id="stArch">0</b><span>مؤرشفة</span></div>
@@ -179,16 +253,8 @@
     </div>
     <div class="card"><h2>محرر المحطات (سحب وإفلات)</h2>
       <p class="hint">اسحب أي علامة لتغيير إحداثيات المحطة ثم اضغط حفظ. زر إضافة محطة جديدة بالأسفل.</p>
-      <div id="admMap" class="map tall"></div>
-      <div class="grid2">
-        <label>اسم محطة جديدة <input id="ncName" placeholder="مركز ..."></label>
-        <label>الرمز <input id="ncCode" placeholder="1006"></label>
-        <label>الهاتف <input id="ncPhone"></label>
-        <label class="chk"><input type="checkbox" id="ncPub" checked> نشر على الخريطة</label>
-      </div>
-      <div class="row"><button id="ncAdd" class="btn">إضافة محطة</button></div>
-      <div class="row"><label style="flex:1">كلمة مرور جديدة للغرفة المركزية <input id="setCentralPass" type="password" autocomplete="off"></label><button id="setCentralBtn" class="btn">تغيير الكلمة</button></div>
-      <div id="adminCenters"></div>
+      <div class="row"><button id="logoutAdmin" class="btn ghost">إنهاء الجلسة وتجديد الروابط</button></div>
+      <div id="admMapNote"></div>
     </div>
     <div class="card"><h2>كل الحوادث + سجل المواقع الخلفي</h2><div id="adminReports"></div></div>
   </div>

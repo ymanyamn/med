@@ -85,6 +85,24 @@ footer{text-align:center;color:#8a7f63;padding:20px;background:var(--green);colo
 /* pulsing red dot */
 .pulse{width:18px;height:18px;background:var(--red);border-radius:50%;box-shadow:0 0 0 6px rgba(193,39,45,.3);animation:pl 1.2s infinite}
 @keyframes pl{50%{box-shadow:0 0 0 14px rgba(193,39,45,.1)}}
+/* breathing live circle for the reporter */
+.breathe{width:26px;height:26px;background:rgba(193,39,45,.85);border:3px solid #fff;border-radius:50%;box-shadow:0 0 0 8px rgba(193,39,45,.25);animation:br 2.2s ease-in-out infinite}
+@keyframes br{0%,100%{transform:scale(1);box-shadow:0 0 0 8px rgba(193,39,45,.25)}50%{transform:scale(1.35);box-shadow:0 0 0 18px rgba(193,39,45,.08)}}
+/* central popup */
+.cpopup{position:fixed;inset:0;z-index:55;display:flex;align-items:flex-start;justify-content:center;padding:18px;background:rgba(0,0,0,.45)}
+.cpopup-card{background:#fffdf6;border:3px solid var(--red);border-radius:16px;padding:18px;max-width:520px;width:100%;box-shadow:0 18px 60px rgba(0,0,0,.4);animation:cpIn .3s ease both}
+@keyframes cpIn{from{opacity:0;transform:translateY(-12px) scale(.98)}to{opacity:1;transform:none}}
+/* cinematic analysis terminal */
+.aterm{background:rgba(5,10,8,.94);border:1px solid #1f5;border-radius:12px;color:#7dff9e;box-shadow:0 0 30px rgba(0,255,120,.2);margin:10px 0;overflow:hidden;transition:max-height .5s ease,opacity .5s ease;max-height:320px}
+.aterm.mini{max-height:64px;opacity:.92}
+.aterm pre{padding:10px 14px;white-space:pre-wrap;font-family:Consolas,monospace;font-size:13px;line-height:1.8;margin:0;text-shadow:0 0 8px #0f6}
+/* silent verification circle */
+.verify{display:flex;gap:12px;align-items:center;background:#f3ecd9;border-radius:12px;padding:10px 14px;margin:10px 0}
+.vring{width:44px;height:44px;border-radius:50%;border:4px solid #d9cfae;border-top-color:var(--green);animation:spin 1s linear infinite}
+.vring.done{animation:none;border-color:var(--green)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.verify ul{margin:0;padding:0;list-style:none;font-size:14px;font-weight:700}
+.verify li.ok{color:var(--green)}
 /* pipeline */
 .pipe{display:flex;gap:4px;margin:8px 0;flex-wrap:wrap}
 .pipe span{background:#eee;border-radius:14px;padding:3px 10px;font-size:12px;font-weight:800}
