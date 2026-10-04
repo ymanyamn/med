@@ -6,3 +6,10 @@ services:
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /api/centers
+    envVars:
+      - key: MED_CENTRAL_PASSWORD
+        sync: false
+      - key: MED_ADMIN_PASS
+        sync: false
+      - key: MED_ADMIN_EMAIL
+        sync: false

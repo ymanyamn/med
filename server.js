@@ -59,6 +59,12 @@ function loadDB() {
   for (const c of db.centers) {
     if (c.code && !c.codeHash) { c.codeHash = sha256(c.code); delete c.code; }
   }
+  // Operator-defined password wins (e.g. Render env MED_CENTRAL_PASSWORD).
+  // Set it once in your hosting dashboard and the room password is known.
+  if (process.env.MED_CENTRAL_PASSWORD && String(process.env.MED_CENTRAL_PASSWORD).length >= 6) {
+    db.settings.centralHash = sha256(String(process.env.MED_CENTRAL_PASSWORD));
+    console.log('[MED] central password taken from MED_CENTRAL_PASSWORD env');
+  }
   // First boot: random central password, printed ONLY to server console.
   // The admin must change it and hand it privately to operations staff.
   if (!db.settings.centralHash) {
