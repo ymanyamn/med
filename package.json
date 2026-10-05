@@ -9,8 +9,9 @@
     "dev": "node server.js"
   },
   "dependencies": {
+    "cors": "^2.8.5",
     "express": "^4.19.2",
-    "socket.io": "^4.7.5",
-    "cors": "^2.8.5"
+    "nodemailer": "^10.0.15",
+    "socket.io": "^4.7.5"
   }
 }

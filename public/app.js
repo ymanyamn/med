@@ -456,7 +456,14 @@ $('adminSend').onclick = async () => {
   try {
     const res = await fetch('/api/admin/request-link', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) }).then(r => r.json());
     $('adminStep2').classList.remove('hidden');
-    $('adminMsg').innerHTML = `<p style="color:green">${res.message || 'تم الإرسال'}</p>`;
+    let html = `<p style="color:green">${res.message || 'تم الإرسال'}</p>`;
+    if (res.devLink) {
+      html += `<p style="background:#fff3cd;padding:8px;border-radius:8px">وضع التجربة (لا SMTP): <a href="${res.devLink}" style="font-weight:bold" dir="ltr">${res.devLink}</a><br><small>انسخه والصقه في خانة الرابط بالأسفل — سيختفي هذا بعد ضبط البريد</small></p>`;
+      if ($('adminLinkIn')) $('adminLinkIn').value = res.devLink;
+    } else if (res.emailed) {
+      html += `<p><small>فتح الرابط من بريدك ثم أدخل كلمة مرور اللوحة هنا.</small></p>`;
+    }
+    $('adminMsg').innerHTML = html;
   } catch { $('adminMsg').innerHTML = '<p style="color:red">تعذّر الاتصال بالخادم — دخول الإدارة يتطلب اتصالاً</p>'; }
 };
 $('adminVerify').onclick = async () => {

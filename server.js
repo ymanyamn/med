@@ -9,6 +9,40 @@ const fs = require('fs');
 const crypto = require('crypto');
 const cors = require('cors');
 const { Server } = require('socket.io');
+let nodemailer = null;
+try { nodemailer = require('nodemailer'); } catch { nodemailer = null; }
+
+// ---- Email (SMTP) ----
+// Configure on Render: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS (+ SMTP_FROM, APP_BASE_URL).
+// Without SMTP the server logs the link and (dev only) returns it for testing.
+function mailConfig() {
+  const host = process.env.SMTP_HOST || '';
+  const user = process.env.SMTP_USER || '';
+  const pass = process.env.SMTP_PASS || '';
+  if (!nodemailer || !host || !user || !pass) return null;
+  const port = +(process.env.SMTP_PORT || 587);
+  const secure = (process.env.SMTP_SECURE || (port === 465 ? 'true' : 'false')) === 'true';
+  return { host, port, secure, user, pass, from: process.env.SMTP_FROM || user };
+}
+function appBaseUrl(req) {
+  const env = (process.env.APP_BASE_URL || '').replace(/\/$/, '');
+  if (env) return env;
+  const proto = (req && req.headers && req.headers['x-forwarded-proto']) || req.protocol || 'http';
+  const host = (req && req.get && req.get('host')) || ('localhost:' + (process.env.PORT || 3000));
+  return `${proto}://${host}`;
+}
+async function sendMail(to, subject, html) {
+  const cfg = mailConfig();
+  if (!cfg) return { sent: false, reason: 'no-smtp' };
+  try {
+    const t = nodemailer.createTransport({ host: cfg.host, port: cfg.port, secure: cfg.secure, auth: { user: cfg.user, pass: cfg.pass } });
+    await t.sendMail({ from: cfg.from, to, subject, html });
+    return { sent: true };
+  } catch (e) {
+    console.log('[MED] SMTP send failed:', e && e.message);
+    return { sent: false, reason: 'smtp-error: ' + (e && e.message) };
+  }
+}
 
 const app = express();
 const server = http.createServer(app);
@@ -190,17 +224,31 @@ app.post('/api/station/login', (req, res) => {
 });
 
 // ---- ADMIN: encrypted single-use link (emailed) + gate password ----
-app.post('/api/admin/request-link', (req, res) => {
+app.get('/api/admin/status', (req, res) => {
+  res.json({ emailConfigured: !!mailConfig() });
+});
+app.post('/api/admin/request-link', async (req, res) => {
   const { email } = req.body || {};
   if ((email || '').trim().toLowerCase() !== ADMIN_EMAIL) {
     return res.json({ ok: true, message: 'إن كان البريد مسجلاً ستصلك رسالة دخول' });
   }
   const token = 'A-' + crypto.randomBytes(24).toString('hex');
   db.adminLinks[token] = { exp: Date.now() + 30 * 60 * 1000 };
-  // PRODUCTION: email `#/a-<token>` to ADMIN_EMAIL via SMTP here.
-  // TEST MODE: server console only — NEVER returned to the browser.
+  const linkUrl = appBaseUrl(req) + '/#/a-' + token;
   console.log(`[MED] admin magic link: #/a-${token} (valid 30 min, single-use, rotated after session)`);
-  res.json({ ok: true, message: 'تم إرسال الرابط المشفر إلى بريد المدير (صالح 30 دقيقة، لمرة واحدة)' });
+  const mail = await sendMail(ADMIN_EMAIL, 'رابط دخول لوحة تحكم MED',
+    `<div dir="rtl" style="font-family:Tahoma"><h3>الدفاع المدني السوري — MED</h3><p>رابط الدخول المشفر (صالح 30 دقيقة، لمرة واحدة):</p><p><a href="${linkUrl}">${linkUrl}</a></p><p>بعد فتح الرابط أدخل كلمة مرور اللوحة.</p></div>`);
+  if (mail.sent) {
+    return res.json({ ok: true, emailed: true, message: 'تم إرسال الرابط المشفر إلى بريدك — تفقد البريد (وصندوق الرسائل غير المرغوبة)' });
+  }
+  const dev = process.env.ALLOW_DEV_LINK === 'true' || !mailConfig();
+  return res.json({
+    ok: true, emailed: false,
+    message: dev
+      ? 'خادم البريد غير مضبوط — وضع التجربة: انسخ الرابط بالأسفل (لن يظهر في الإنتاج بعد ضبط SMTP)'
+      : 'تعذر إرسال البريد حالياً (' + (mail.reason || '') + ') — راجع سجل الخادم أو إعدادات SMTP',
+    ...(dev ? { devLink: '#/a-' + token, devUrl: linkUrl } : {})
+  });
 });
 app.post('/api/admin/enter', (req, res) => {
   const { token, password } = req.body || {};
@@ -216,7 +264,7 @@ app.post('/api/admin/enter', (req, res) => {
   saveDB(db);
   res.json({ ok: true, adminToken: db.adminToken });
 });
-app.post('/api/admin/request-code', (req, res) => {
+app.post('/api/admin/request-code', async (req, res) => {
   const { email } = req.body || {};
   if ((email || '').trim().toLowerCase() !== ADMIN_EMAIL) {
     // Generic reply: do not reveal which address is valid.
@@ -226,10 +274,18 @@ app.post('/api/admin/request-code', (req, res) => {
   const code = String(Math.floor(100000 + Math.random() * 900000));
   const token = 'MED-' + Buffer.from(`${ADMIN_EMAIL}|${Date.now()}|${crypto.randomBytes(8).toString('hex')}`).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   db.otps[pendingId] = { code, token, exp: Date.now() + 10 * 60 * 1000 };
-  // TEST MODE: printed to server console only — NEVER returned to the browser.
-  // PRODUCTION: send `code` + link `#/admin-<token>` via SMTP to ADMIN_EMAIL here.
   console.log(`[MED] admin OTP pendingId=${pendingId} code=${code} magic=#/admin-${token}`);
-  res.json({ ok: true, pendingId, message: 'تم إرسال الكود إلى بريد المدير' });
+  const mail = await sendMail(ADMIN_EMAIL, 'كود دخول لوحة تحكم MED',
+    `<div dir="rtl" style="font-family:Tahoma"><h3>الدفاع المدني السوري — MED</h3><p>كود الدخول (صالح 10 دقائق): <b style="font-size:22px">${code}</b></p></div>`);
+  if (mail.sent) {
+    return res.json({ ok: true, pendingId, emailed: true, message: 'تم إرسال الكود إلى بريدك — تفقد البريد (وصندوق الرسائل غير المرغوبة)' });
+  }
+  const dev = process.env.ALLOW_DEV_LINK === 'true' || !mailConfig();
+  return res.json({
+    ok: true, pendingId, emailed: false,
+    message: dev ? 'خادم البريد غير مضبوط — وضع التجربة: الكود بالأسفل' : 'تعذر إرسال البريد حالياً — راجع إعدادات SMTP',
+    ...(dev ? { devCode: code } : {})
+  });
 });
 app.post('/api/admin/verify', (req, res) => {
   const { pendingId, code, token } = req.body || {};
