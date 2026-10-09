@@ -6,7 +6,9 @@ export async function sendLoginCode(to: string, code: string) {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      from: process.env.MAIL_FROM ?? 'med <onboarding@resend.dev>',
+      from:
+        process.env.MAIL_FROM ??
+        `med <noreply@${process.env.RESEND_EMAIL_DOMAIN ?? 'resend.dev'}>`,
       to,
       subject: 'رمز الدخول إلى لوحة تحكم med',
       html: `<div dir="rtl" style="font-family:sans-serif;padding:24px">
