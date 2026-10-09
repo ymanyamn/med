@@ -1,10 +1,26 @@
+'use client'
+
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+
 import { Emblem } from '@/components/emblem'
 import { DeveloperTerminal } from '@/components/landing/developer-terminal'
 import { Typewriter } from '@/components/landing/typewriter'
 
 export default function HomePage() {
+  const router = useRouter()
+  const [secretClicks, setSecretClicks] = useState(0)
+
+  function handleSecretClick() {
+    const nextClicks = secretClicks + 1
+    if (nextClicks >= 5) {
+      router.push('/control')
+      return
+    }
+    setSecretClicks(nextClicks)
+  }
   return (
     <main className="relative flex min-h-dvh flex-col overflow-hidden">
       <div aria-hidden="true" className="absolute inset-x-0 top-0 h-2 bg-primary" />
@@ -51,9 +67,14 @@ export default function HomePage() {
 
       <footer className="flex flex-col items-center gap-2 px-6 pb-8 text-center">
         <DeveloperTerminal />
-        <p className="font-mono text-xs text-muted-foreground/70" dir="ltr">
+        <button
+          type="button"
+          onClick={handleSecretClick}
+          aria-label="M-Code"
+          className="font-mono text-xs text-muted-foreground/70 transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
           M-Code
-        </p>
+        </button>
       </footer>
     </main>
   )

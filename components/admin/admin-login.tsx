@@ -35,7 +35,7 @@ export function AdminLogin() {
           <Emblem className="size-14" />
           <h1 className="text-xl font-bold">لوحة التحكم الإدارية</h1>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            أدخل رمز لوحة التحكم الخاص بك للدخول
+            أدخل كلمة مرور لوحة التحكم للدخول
           </p>
         </div>
 
