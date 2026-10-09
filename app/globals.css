@@ -1,0 +1,125 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: 'IBM Plex Sans Arabic', 'IBM Plex Sans Arabic Fallback', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'IBM Plex Sans Arabic', 'IBM Plex Mono Fallback', ui-monospace, monospace;
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+}
+
+/* Palette: civil-defence green, sugar white, deep ink, emergency red, sage neutral */
+:root {
+  color-scheme: light;
+  --background: oklch(0.985 0.006 100);
+  --foreground: oklch(0.23 0.035 158);
+  --card: oklch(0.998 0.002 100);
+  --card-foreground: oklch(0.23 0.035 158);
+  --popover: oklch(0.998 0.002 100);
+  --popover-foreground: oklch(0.23 0.035 158);
+  --primary: oklch(0.46 0.11 153);
+  --primary-foreground: oklch(0.985 0.006 100);
+  --secondary: oklch(0.945 0.03 150);
+  --secondary-foreground: oklch(0.32 0.08 155);
+  --muted: oklch(0.955 0.012 130);
+  --muted-foreground: oklch(0.48 0.025 155);
+  --accent: oklch(0.945 0.03 150);
+  --accent-foreground: oklch(0.32 0.08 155);
+  --destructive: oklch(0.57 0.21 27);
+  --destructive-foreground: oklch(0.985 0.006 100);
+  --border: oklch(0.9 0.018 140);
+  --input: oklch(0.88 0.02 140);
+  --ring: oklch(0.46 0.11 153);
+  --radius: 0.875rem;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+}
+
+.leaflet-container {
+  font-family: var(--font-sans);
+  background: var(--muted);
+}
+
+.marker-citizen {
+  stroke: var(--destructive);
+  fill: var(--destructive);
+}
+
+.marker-citizen-pulse {
+  stroke: var(--destructive);
+  fill: var(--destructive);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: med-pulse 1.6s ease-out infinite;
+}
+
+.marker-center {
+  stroke: var(--primary-foreground);
+  fill: var(--primary);
+}
+
+.marker-selected {
+  stroke: var(--foreground);
+  fill: var(--primary);
+}
+
+@keyframes med-pulse {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+@keyframes med-caret {
+  50% {
+    opacity: 0;
+  }
+}
+
+.typing-caret {
+  animation: med-caret 1s steps(1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marker-citizen-pulse,
+  .typing-caret {
+    animation: none;
+  }
+}
